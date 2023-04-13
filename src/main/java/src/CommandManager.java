@@ -23,12 +23,14 @@ import java.util.*;
 public class CommandManager implements CommandManagerCustom {
 
     private RealUndoManager undoManager;
+    private String currentScriptBeingExecuted;
+    private HashMap<String, List<String>> executeScriptHandyMap;
     private CollectionCustom<Product> collectionManager = null;
     private final InputService inputService;
     private Scanner scanner;
     private SocketChannel clientChannel;
     private final HashMap<String, Command> commandsMap;
-    private SendingManager sendingManager;
+    private final SendingManager sendingManager;
     private final LinkedList<String> commandHistory;
 
     private final SerializationManager serializationManager;
@@ -69,6 +71,19 @@ public class CommandManager implements CommandManagerCustom {
         }
     }
 
+    public void setCurrentScriptBeingExecuted(String name){
+        this.currentScriptBeingExecuted = name;
+    }
+    public String getCurrentScriptBeingExecuted(){
+        return this.currentScriptBeingExecuted;
+    }
+
+    public void setExecuteScriptHandyMap(HashMap<String, List<String>> executeScriptHandyMap){
+        this.executeScriptHandyMap = executeScriptHandyMap;
+    }
+    public HashMap<String, List<String>> getExecuteScriptHandyMap(){
+        return executeScriptHandyMap;
+    }
     public SocketChannel getClientChannel() {
         return clientChannel;
     }
@@ -123,6 +138,7 @@ public class CommandManager implements CommandManagerCustom {
         commandHistory.add(commandName);
         var result = command.execute(request);
         collectionManager.save();
+        undoManager.saveLoggingFiles();
         return result;
     }
 

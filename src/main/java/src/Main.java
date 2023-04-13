@@ -6,6 +6,7 @@ import src.network_utils.TCPServer;
 import src.service.InputService;
 
 import java.io.*;
+import java.util.Scanner;
 
 public class Main {
 
@@ -22,6 +23,7 @@ public class Main {
             server = new TCPServer(PORT, receivingManager, commandManager);
             receivingManager.setSessions(server.getSessions());
             server.start();
+
         }
         catch (Exception e){
             System.out.println(e.getMessage());

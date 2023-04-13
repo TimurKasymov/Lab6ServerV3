@@ -19,7 +19,7 @@ public class ClearCommand extends CommandBase implements Command {
         var numbOFLoops = prods.size();
         commandManager.getUndoManager().startOrEndTransaction();
         for (int i = 0; i < numbOFLoops; i++) {
-            commandManager.executeCommand(new RemoveByIdRequest((long)i));
+            commandManager.executeCommand(new RemoveByIdRequest((long)i+1));
         }
         commandManager.getUndoManager().startOrEndTransaction();
 

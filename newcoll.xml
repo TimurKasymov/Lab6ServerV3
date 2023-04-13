@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<products>
+    <product>
+        <id>1</id>
+        <name>sad</name>
+        <coordinates>
+            <x>423.0</x>
+            <y>243.0</y>
+        </coordinates>
+        <creationDate>2023-04-03T18:27:05.8970534</creationDate>
+        <price>234.0</price>
+        <manufactureCost>3.0</manufactureCost>
+        <unitOfMeasure>METERS</unitOfMeasure>
+    </product>
+</products>

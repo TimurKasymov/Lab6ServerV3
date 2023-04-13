@@ -23,9 +23,12 @@ public class InfoCommand extends CommandBase implements Command {
     public boolean execute(Request request) {
         var products = commandManager.getCollectionManager().get();
         var collection = commandManager.getCollectionManager();
-        var time = collection.getInitializationTime().atZone(ZoneId.of("Europe/Moscow"));
+        var time = collection.getInitializationTime();
+        var timeFormatted = time == null ? "Collection was not initialized" : time
+                .atZone(ZoneId.of("Europe/Moscow"))
+                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
         var toPrint = String.format("type of colleciton: %s\ninitialization date: %s\nnumber of elements: %s", collection.getElementType().getName(),
-                time.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")), products.size() );
+                timeFormatted, products.size() );
         var response = new InfoResponse(null);
         response.setMessageForClient(toPrint);
         sendToClient(response);

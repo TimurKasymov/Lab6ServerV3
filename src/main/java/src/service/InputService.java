@@ -4,30 +4,25 @@ import src.models.*;
 import src.container.CommandsContainer;
 import src.exceptions.CommandInterruptionException;
 
-import java.util.Collection;
-import java.util.InputMismatchException;
-import java.util.NoSuchElementException;
-import java.util.Scanner;
+import java.util.*;
 
 public class InputService {
 
     public InputService(){
 
     }
-    private Scanner scanner = null;
-    {
-        scanner = new Scanner(System.in);
-    }
+    private Iterator<String> iterator = null;
 
-    public void setScanner(Scanner scanner){
-        this.scanner = scanner;
+
+    public void setIterator(Iterator<String> iterator){
+        this.iterator = iterator;
     }
 
     public String inputName() throws NoSuchElementException, CommandInterruptionException {
         for ( ; ; ) {
             try {
                 //messageHandler.displayToUser("Enter a name: ");
-                String name = scanner.nextLine().trim();
+                String name = iterator.next().trim();
                 if(CommandsContainer.contains(name))
                     throw new CommandInterruptionException(name);
                 if (name.equals("")) {
@@ -50,7 +45,7 @@ public class InputService {
                 return (OrganizationType) orgType;
             } catch (InputMismatchException inputMismatchException) {
                 //messageHandler.displayToUser("This value must be a number. Try again. ");
-                scanner.next();
+                iterator.next();
             }
         }
     }
@@ -58,7 +53,7 @@ public class InputService {
     public Integer getInt() throws NoSuchElementException, CommandInterruptionException {
         for ( ; ; ) {
             try {
-                var str = scanner.nextLine();
+                var str = iterator.next();
                 if (str.equals("")) {
                     //messageHandler.displayToUser("This value cannot be empty. Try again");
                     continue;
@@ -88,7 +83,7 @@ public class InputService {
     public Double inputXLocation() throws NoSuchElementException, CommandInterruptionException {
         for ( ; ; ) {
             try {
-                var str = scanner.nextLine();
+                var str = iterator.next();
                 if (str.equals("")) {
                     continue;
                 }
@@ -110,7 +105,7 @@ public class InputService {
     public float inputYLocation()  throws NoSuchElementException, CommandInterruptionException {
         for ( ; ; ) {
             try {
-                var str = scanner.nextLine();
+                var str = iterator.next();
                 if (str.equals("")) {
                     continue;
                 }
@@ -134,7 +129,7 @@ public class InputService {
         for ( ; ; ) {
             try {
                 //messageHandler.displayToUser("Enter the price of the product: ");
-                var str = scanner.nextLine();
+                var str = iterator.next();
                 if (str.equals("")) {
                     //messageHandler.displayToUser("This value cannot be empty. Try again");
                     continue;
@@ -158,7 +153,7 @@ public class InputService {
         for ( ; ; ) {
             try {
                 //messageHandler.displayToUser("Enter manufacture cost: ");
-                var str = scanner.nextLine().trim();
+                var str = iterator.next().trim();
                 if (str.equals("")) {
                     //messageHandler.displayToUser("This value cannot be empty. Try again");
                     continue;
@@ -181,7 +176,7 @@ public class InputService {
         var enums = enumClass.getEnumConstants();
         while (true){
             try {
-                var str = scanner.nextLine();
+                var str = iterator.next();
                 if (str.equals("")) {
                     //messageHandler.displayToUser("This value cannot be empty. Try again");
                     continue;
@@ -195,7 +190,7 @@ public class InputService {
                 }
                 return enums[index - 1];
             } catch (InputMismatchException | NumberFormatException inputMismatchException) {
-                scanner.next();
+                iterator.next();
             }
 
         }
@@ -211,7 +206,7 @@ public class InputService {
 
             } catch (InputMismatchException inputMismatchException) {
                 //messageHandler.displayToUser("This value must be a number. Try again. ");
-                scanner.next();
+                iterator.next();
             }
         }
     }
@@ -235,7 +230,7 @@ public class InputService {
         for ( ; ; ) {
             try {
                 //messageHandler.displayToUser(String.format("Enter annual turnover. Note that value can only be from %s to %s: ", 1, Integer.MAX_VALUE));
-                var str = scanner.nextLine();
+                var str = iterator.next();
                 if (str.equals("")) {
                     //messageHandler.displayToUser("This value cannot be empty. Try again");
                     continue;

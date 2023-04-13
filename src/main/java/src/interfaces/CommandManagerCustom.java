@@ -8,6 +8,7 @@ import src.network_utils.SendingManager;
 import src.service.InputService;
 
 import java.nio.channels.SocketChannel;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
 
@@ -31,5 +32,9 @@ public interface CommandManagerCustom {
     SendingManager getSendingManager();
     SerializationManager getSerializationManager();
     SocketChannel getClientChannel();
+    void setExecuteScriptHandyMap(HashMap<String, List<String>> executeScriptHandyMap);
+    HashMap<String, List<String>> getExecuteScriptHandyMap();
     void setSocketChannel(SocketChannel socketChannel);
+    void setCurrentScriptBeingExecuted(String name);
+    String getCurrentScriptBeingExecuted();
 }
