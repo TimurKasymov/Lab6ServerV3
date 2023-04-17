@@ -17,5 +17,6 @@ public interface CollectionCustom<TEntity> {
     void save();
     /** loads */
     boolean load(File pathToFile);
+    File getLoadedFile();
 
 }

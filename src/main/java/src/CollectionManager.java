@@ -28,6 +28,9 @@ public class CollectionManager implements CollectionCustom<Product> {
         this.products = new LinkedList<>();
     }
 
+    public File getLoadedFile(){
+        return xmlfile;
+    }
     @Override
     public boolean load(File pathToFile){
             try {

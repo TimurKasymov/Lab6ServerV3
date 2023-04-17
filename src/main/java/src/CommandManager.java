@@ -138,6 +138,9 @@ public class CommandManager implements CommandManagerCustom {
      * @return the execution was successful
      */
     public boolean executeCommand(Request request) {
+        var lastLoadedFile = collectionManager.getLoadedFile();
+        if(lastLoadedFile != null)
+            collectionManager.load(lastLoadedFile);
         if (request.messageType == MessageType.ALL_AVAILABLE_COMMANDS) {
             var commandPlsArguments = new HashMap<String, List<Pair<Argument, Integer>>>();
             for (var comm : commandsMap.keySet()) {
