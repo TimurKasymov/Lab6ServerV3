@@ -1,19 +1,21 @@
 package src;
 
+import org.apache.commons.lang3.tuple.Pair;
 import src.converters.SerializationManager;
 import src.loggerUtils.LoggerManager;
 import src.models.Product;
-import src.network.requests.LoadFileRequest;
-import src.network.requests.Request;
 import src.commands.*;
 import src.commands.AddCommand;
 import src.container.CommandsContainer;
 import src.interfaces.*;
 import src.interfaces.CollectionCustom;
 import src.interfaces.Command;
-import src.network.responses.LoadFileResponse;
+import src.network.MessageType;
+import src.network.Request;
+import src.network.Response;
 import src.network_utils.SendingManager;
 import src.service.InputService;
+import src.utils.Argument;
 import src.utils.Commands;
 
 import java.io.File;
@@ -32,7 +34,7 @@ public class CommandManager implements CommandManagerCustom {
     private final HashMap<String, Command> commandsMap;
     private final SendingManager sendingManager;
     private final LinkedList<String> commandHistory;
-
+    public Integer sendingToClientPort;
     private final SerializationManager serializationManager;
 
     /**
@@ -71,19 +73,31 @@ public class CommandManager implements CommandManagerCustom {
         }
     }
 
-    public void setCurrentScriptBeingExecuted(String name){
+    public void setCurrentScriptBeingExecuted(String name) {
         this.currentScriptBeingExecuted = name;
     }
-    public String getCurrentScriptBeingExecuted(){
+
+    public String getCurrentScriptBeingExecuted() {
         return this.currentScriptBeingExecuted;
     }
 
-    public void setExecuteScriptHandyMap(HashMap<String, List<String>> executeScriptHandyMap){
+    @Override
+    public int getClientPort(){
+        return sendingToClientPort;
+    }
+    @Override
+    public void setSendingToClientPort(Integer sendingToClientPort) {
+        this.sendingToClientPort = sendingToClientPort;
+    }
+
+    public void setExecuteScriptHandyMap(HashMap<String, List<String>> executeScriptHandyMap) {
         this.executeScriptHandyMap = executeScriptHandyMap;
     }
-    public HashMap<String, List<String>> getExecuteScriptHandyMap(){
+
+    public HashMap<String, List<String>> getExecuteScriptHandyMap() {
         return executeScriptHandyMap;
     }
+
     public SocketChannel getClientChannel() {
         return clientChannel;
     }
@@ -124,18 +138,28 @@ public class CommandManager implements CommandManagerCustom {
      * @return the execution was successful
      */
     public boolean executeCommand(Request request) {
-        if(Objects.equals(request.commandName, Commands.LOAD_COLLECTION))
-        {
-            var fileLoadingRequest = (LoadFileRequest)request;
-            var successfully = collectionManager.load(new File(fileLoadingRequest.collectionFileName));
-            var response = new LoadFileResponse(successfully);
+        if (request.messageType == MessageType.ALL_AVAILABLE_COMMANDS) {
+            var commandPlsArguments = new HashMap<String, List<Pair<Argument, Integer>>>();
+            for (var comm : commandsMap.keySet()) {
+                commandPlsArguments.put(comm, commandsMap.get(comm).getRequiredArguments());
+            }
+            var response = new Response();
+            response.messageType = MessageType.ALL_AVAILABLE_COMMANDS;
+            response.commandRequirements = commandPlsArguments;
             var data = serializationManager.serialize(response);
-            sendingManager.send(data, getClientChannel());
+            sendingManager.send(data, getClientChannel(), sendingToClientPort);
             return true;
         }
-        var commandName = request.getCommandName();
-        var command = commandsMap.get(commandName);
-        commandHistory.add(commandName);
+        if (request.messageType == MessageType.LOAD_COLLECTION) {
+            var successfully = collectionManager.load(new File((String) request.requiredArguments.get(0)));
+            var response = new Response("collection was loaded successfully");
+            var data = serializationManager.serialize(response);
+            sendingManager.send(data, getClientChannel(), sendingToClientPort);
+            return true;
+        }
+        var commandName = request.messageType;
+        var command = commandsMap.get(commandName.getCommandDesc());
+        commandHistory.add(commandName.getCommandDesc());
         var result = command.execute(request);
         collectionManager.save();
         undoManager.saveLoggingFiles();

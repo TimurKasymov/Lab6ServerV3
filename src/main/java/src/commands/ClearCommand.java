@@ -1,16 +1,21 @@
 package src.commands;
 
-import src.network.requests.ClearRequest;
-import src.network.requests.RemoveByIdRequest;
-import src.network.requests.Request;
-import src.network.responses.ClearResponse;
+import org.apache.commons.lang3.tuple.Pair;
 import src.interfaces.Command;
 import src.interfaces.CommandManagerCustom;
+import src.network.MessageType;
+import src.network.Request;
+import src.network.Response;
+import src.utils.Argument;
+
+import java.util.LinkedList;
+import java.util.List;
 
 public class ClearCommand extends CommandBase implements Command {
 
     public ClearCommand(CommandManagerCustom commandManager) {
         super(commandManager);
+        arguments = new LinkedList<>();
     }
 
     @Override
@@ -19,20 +24,21 @@ public class ClearCommand extends CommandBase implements Command {
         var numbOFLoops = prods.size();
         commandManager.getUndoManager().startOrEndTransaction();
         for (int i = 0; i < numbOFLoops; i++) {
-            commandManager.executeCommand(new RemoveByIdRequest((long)i+1));
+            var req = new Request(MessageType.CLEAR);
+            req.requiredArguments.add((long)i);
+            commandManager.executeCommand(req);
         }
         commandManager.getUndoManager().startOrEndTransaction();
 
-        var response = new ClearResponse(null);
+        var response = new Response();
         sendToClient(response);
         return true;
     }
 
     @Override
     public boolean execute(String[] request) {
-        return execute(new ClearRequest());
+        return execute(new Request(MessageType.CLEAR));
     }
-
 
     @Override
     public String getInfo() {

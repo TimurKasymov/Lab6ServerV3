@@ -1,26 +1,31 @@
 package src.commands;
 
+import org.apache.commons.lang3.tuple.Pair;
 import src.models.UnitOfMeasure;
-import src.network.requests.PrintUniqueUnitOfMeasureRequest;
-import src.network.responses.PrintUniqueUnitOfMeasureResponse;
 import src.interfaces.Command;
 import src.interfaces.CommandManagerCustom;
-import src.network.requests.Request;
+import src.network.MessageType;
+import src.network.Request;
+import src.network.Response;
+import src.utils.Argument;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
 
 public class PrintUniqueUnitOfMeasureCommand extends CommandBase implements Command {
     public PrintUniqueUnitOfMeasureCommand(CommandManagerCustom commandManager){
         super(commandManager);
+        arguments = new LinkedList<>();
     }
 
     @Override
     public boolean execute(String[] args) {
-        return execute(new PrintUniqueUnitOfMeasureRequest());
+        return execute(new Request(MessageType.PRINT_UNIQUE_UNIT_OF_MEASURE));
     }
 
     @Override
     public boolean execute(Request request) {
-        var response = new PrintUniqueUnitOfMeasureResponse(null);
+        var response = new Response();
         var products = commandManager.getCollectionManager().get();
         var set = new HashSet<UnitOfMeasure>();
         var res = new StringBuilder();
@@ -32,7 +37,7 @@ public class PrintUniqueUnitOfMeasureCommand extends CommandBase implements Comm
         ) {
             res.append(unit.toString()).append('\n');
         }
-        response.setMessageForClient(res.toString());
+        response.serverResponseToCommand = res.toString();
         sendToClient(response);
         return true;
     }

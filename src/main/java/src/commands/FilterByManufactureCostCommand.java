@@ -1,42 +1,48 @@
 package src.commands;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import src.models.Product;
-import src.network.requests.FilterByManufactureCostRequest;
-import src.network.requests.Request;
-import src.network.responses.FilterByManufactureCostResponse;
 import src.interfaces.Command;
 import src.interfaces.CommandManagerCustom;
+import src.network.MessageType;
+import src.network.Request;
+import src.network.Response;
+import src.utils.Argument;
+import java.util.LinkedList;
+import java.util.List;
 
 public class FilterByManufactureCostCommand extends CommandBase implements Command {
     public FilterByManufactureCostCommand(CommandManagerCustom commandManager){
         super(commandManager);
+        arguments = new LinkedList<>();
+        arguments.add(ImmutablePair.of(Argument.COST, 1));
     }
-
 
     @Override
     public boolean execute(String[] args) {
         var cost = Double.parseDouble(args[0]);
-        return execute(new FilterByManufactureCostRequest(cost));
+        var request = new Request(MessageType.FILTER_BY_MANUFACTURE_COST);
+        request.requiredArguments.add(cost);
+        return execute(request);
     }
 
     @Override
     public boolean execute(Request request) {
-        var filterRequest = (FilterByManufactureCostRequest)request;
-        FilterByManufactureCostResponse response;
+        Response response;
         try {
-            response = new FilterByManufactureCostResponse(null);
-            var manufactureCost = filterRequest.getCost();
+            response = new Response(null);
+            var manufactureCost = (Double) request.requiredArguments.get(0);
             var products = commandManager.getCollectionManager().get();
             for (Product product : products) {
                 if(product.getManufactureCost().doubleValue() == manufactureCost)
-                    response.add(product);
+                    response.serverResponseToCommand += product.toString() + "\n\n";
             }
         }
         catch (Exception exception){
-            response = new FilterByManufactureCostResponse(String.format("Manufacture cost must be from %s to %s. Try typing this command again", 0, Double.MAX_VALUE));
+            response = new Response(String.format("Manufacture cost must be from %s to %s. Try typing this command again", 0, Double.MAX_VALUE));
         }
         sendToClient(response);
-
         return true;
     }
 

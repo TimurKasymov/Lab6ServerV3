@@ -1,3 +1,4 @@
+remove 1
 I_am_transaction_delimiter
 remove 21
 remove 21
@@ -322,3 +323,5 @@ add 2
 add 1
 add 0
 I_am_transaction_delimiter
+update 1
+remove 71

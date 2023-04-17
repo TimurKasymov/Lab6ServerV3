@@ -1,17 +1,23 @@
 package src.commands;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import src.loggerUtils.LoggerManager;
 import src.models.Product;
-import src.network.requests.AddRequest;
-import src.network.requests.Request;
-import src.network.responses.AddResponse;
+import src.network.MessageType;
+import src.network.Request;
 import org.slf4j.Logger;
 import src.exceptions.CommandInterruptionException;
 import src.exceptions.InterruptionCause;
 import src.interfaces.Command;
 import src.interfaces.CommandManagerCustom;
+import src.network.Response;
+import src.service.ValidatorService;
+import src.utils.Argument;
 
 import java.util.InputMismatchException;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.NoSuchElementException;
 
 
@@ -22,11 +28,14 @@ public class AddCommand extends CommandBase implements Command {
     public AddCommand(CommandManagerCustom commandManager) {
         super(commandManager);
         logger = LoggerManager.getLogger(AddCommand.class);
+        arguments = new LinkedList<>();
+        arguments.add(ImmutablePair.of(Argument.PRODUCT, 1));
+
     }
 
     @Override
     public boolean execute(String[] args) {
-        return execute(new AddRequest(null));
+        return execute(new Request(MessageType.ADD));
     }
 
     private Product fillInProduct() throws CommandInterruptionException {
@@ -57,40 +66,48 @@ public class AddCommand extends CommandBase implements Command {
         }
         var prod = new Product(id, name, coord, price, manufCost,
                 unit, yesOrNo == 1 ? inputService.inputOrganization(products) : null);
-        commandManager.getUndoManager().logAddCommand(id);
+
         return prod;
     }
 
     @Override
     public boolean execute(Request request) {
-        var addRequest = (AddRequest) request;
         try {
-            if (addRequest.product == null) {
+            Product product;
+            if (request.requiredArguments.size() == 0) {
                 // fill in the product from script
-                addRequest.product = fillInProduct();
+                product = fillInProduct();
             }
+            product = (Product)request.requiredArguments.get(0);
+
             var maxId = Long.MIN_VALUE;
             var products = commandManager.getCollectionManager().get();
-            for (var product : products) {
-                maxId = Long.max(maxId, product.getId());
+            for (var prod : products) {
+                maxId = Long.max(maxId, prod.getId());
             }
             var id = products.size() == 0 ? 1 : maxId + 1;
-            addRequest.product.setId(id);
+            product.setId(id);
 
+            if(!ValidatorService.validateProduct(product))
+            {
+                var resp = new Response("product has not met validation criteria");
+                sendToClient(resp);
+                return true;
+            }
             commandManager.getUndoManager().logAddCommand(id);
             if (products.size() == 0) {
-                products.add(addRequest.product);
-                var resp = new AddResponse(id, null, "product was added");
+                products.add(product);
+                var resp = new Response("product with id " + id + " added");
             }
             else if (products.peekLast().getId() == maxId)
-                products.add(addRequest.product);
+                products.add(product);
             else
-                products.addFirst(addRequest.product);
-            var response = new AddResponse(id, "adding product was successful", null);
+                products.addFirst(product);
+            var response = new Response("product with id " + id + " added");
             sendToClient(response);
             return true;
         } catch (NoSuchElementException exception) {
-            var response = new AddResponse(0L, "adding product was canceled", exception.getMessage());
+            var response = new Response("adding product was canceled");
             sendToClient(response);
         } catch (CommandInterruptionException e) {
             if (e.getInterruptionCause() == InterruptionCause.EXIT)

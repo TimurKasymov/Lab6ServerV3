@@ -1,22 +1,26 @@
 package src.commands;
 
-import src.network.requests.InfoRequest;
-import src.network.responses.InfoResponse;
+import org.apache.commons.lang3.tuple.Pair;
 import src.interfaces.Command;
 import src.interfaces.CommandManagerCustom;
-import src.network.requests.Request;
-
+import src.network.MessageType;
+import src.network.Request;
+import src.network.Response;
+import src.utils.Argument;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedList;
+import java.util.List;
 
 public class InfoCommand extends CommandBase implements Command {
     public InfoCommand(CommandManagerCustom commandManager){
         super(commandManager);
+        arguments = new LinkedList<>();
     }
 
     @Override
     public boolean execute(String[] args) {
-        return execute(new InfoRequest());
+        return execute(new Request(MessageType.INFO));
     }
 
     @Override
@@ -29,8 +33,8 @@ public class InfoCommand extends CommandBase implements Command {
                 .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
         var toPrint = String.format("type of colleciton: %s\ninitialization date: %s\nnumber of elements: %s", collection.getElementType().getName(),
                 timeFormatted, products.size() );
-        var response = new InfoResponse(null);
-        response.setMessageForClient(toPrint);
+        var response = new Response();
+        response.serverResponseToCommand = toPrint;
         sendToClient(response);
         return true;
     }

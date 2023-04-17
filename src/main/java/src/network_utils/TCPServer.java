@@ -3,7 +3,7 @@ package src.network_utils;
 import src.converters.SerializationManager;
 import src.interfaces.CommandManagerCustom;
 import src.loggerUtils.LoggerManager;
-import src.network.requests.Request;
+import src.network.Request;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -63,6 +63,7 @@ public class TCPServer {
                         var result = receivingManager.read(key);
                         if(result == null)
                             continue;
+                        commandManager.setSendingToClientPort(receivingManager.comingFromClientPort);
                         Request request;
                         // object is done being transferred
                         var res = result.getLeft();

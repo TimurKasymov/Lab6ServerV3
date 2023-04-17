@@ -10,7 +10,7 @@ import java.util.Scanner;
 
 public class Main {
 
-    private static final int PORT = 23586;
+    private static final int PORT = 23588;
 
     public static void main(String[] args) throws IOException {
 

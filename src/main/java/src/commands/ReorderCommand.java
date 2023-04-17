@@ -1,32 +1,36 @@
 package src.commands;
 
-import src.network.requests.ReorderRequest;
-import src.network.responses.ReorderResponse;
+import org.apache.commons.lang3.tuple.Pair;
 import src.interfaces.Command;
 import src.interfaces.CommandManagerCustom;
-import src.network.requests.Request;
-
+import src.network.MessageType;
+import src.network.Request;
+import src.network.Response;
+import src.utils.Argument;
 import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 
 public class ReorderCommand extends CommandBase implements Command {
 
     public ReorderCommand(CommandManagerCustom commandManager){
         super(commandManager);
+        arguments = new LinkedList<>();
     }
 
     @Override
     public boolean execute(String[] args) {
-        return execute(new ReorderRequest());
+        return execute(new Request(MessageType.REORDER));
     }
 
     @Override
     public boolean execute(Request request) {
-        var resp = new ReorderResponse(null);
+        var resp = new Response();
         Collections.reverse(commandManager.getCollectionManager().get());
         commandManager
                 .getUndoManager()
                 .logReorderCommand();
-        resp.setMessageForClient("collection was reordered successfully");
+        resp.serverResponseToCommand = "collection was reordered successfully";
         sendToClient(resp);
         return true;
     }

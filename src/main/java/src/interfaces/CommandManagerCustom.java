@@ -2,7 +2,7 @@ package src.interfaces;
 
 import src.converters.SerializationManager;
 import src.models.Product;
-import src.network.requests.Request;
+import src.network.Request;
 import src.RealUndoManager;
 import src.network_utils.SendingManager;
 import src.service.InputService;
@@ -37,4 +37,6 @@ public interface CommandManagerCustom {
     void setSocketChannel(SocketChannel socketChannel);
     void setCurrentScriptBeingExecuted(String name);
     String getCurrentScriptBeingExecuted();
+    void setSendingToClientPort(Integer sendingToClientPort);
+    int getClientPort();
 }

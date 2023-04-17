@@ -1,6 +1,10 @@
 package src.interfaces;
 
-import src.network.requests.Request;
+import org.apache.commons.lang3.tuple.Pair;
+import src.network.Request;
+import src.utils.Argument;
+
+import java.util.List;
 
 
 public interface Command {
@@ -9,4 +13,5 @@ public interface Command {
     boolean execute(Request request);
     /** prints the command description */
     String getInfo();
+    List<Pair<Argument, Integer>> getRequiredArguments();
 }

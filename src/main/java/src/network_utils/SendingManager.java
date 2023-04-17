@@ -16,29 +16,41 @@ public class SendingManager {
 
 
 
-    public void send(byte[] data, SocketChannel socketChannel) {
+    public void send(byte[] data, SocketChannel socketChannel, Integer sendingToClientPort) {
         var logger = LoggerManager.getLogger(SendingManager.class);
 
         try {
-            byte[][] ret = new byte[(int) Math.ceil(data.length / (double) DATA_SIZE)][DATA_SIZE];
+            var st = sendingToClientPort.toString().split("");
+            var bytes = Arrays.stream(st).map(Byte::valueOf).toArray();
 
+            var cutPointer = 1024;
+            for(int i = data.length-1; i>-1 && data[i] == 0; i--){
+                cutPointer = i;
+            }
+            if(cutPointer != 1024)
+                data = Arrays.copyOfRange(data, 0, cutPointer);
+            byte[][] ret = new byte[(int) Math.ceil(data.length / (double) (DATA_SIZE - st.length))][DATA_SIZE];
             int start = 0;
             for (int i = 0; i < ret.length; i++) {
-                ret[i] = Arrays.copyOfRange(data, start, start + DATA_SIZE);
-                start += DATA_SIZE;
+                ret[i] = Arrays.copyOfRange(data, start, start + DATA_SIZE - st.length);
+                for (Object aByte : bytes) {
+                    var b = new byte[]{(Byte) aByte};
+                    ret[i] = Bytes.concat(ret[i], b);
+                }
+                start += DATA_SIZE - st.length;
             }
 
-            logger.info("Отправляется " + ret.length + " чанков...");
+            System.out.println("Отправляется " + ret.length + " чанков...");
 
             for (int i = 0; i < ret.length; i++) {
                 var chunk = ret[i];
                 if (i == ret.length - 1) {
                     var lastChunk = Bytes.concat(chunk, new byte[]{1});
                     socketChannel.write(ByteBuffer.wrap(lastChunk));
-                    logger.info("Последний чанк размером " + chunk.length + " отправлен на сервер.");
+                    System.out.println("Последний чанк размером " + chunk.length + " отправлен на сервер.");
                 } else {
                     socketChannel.write(ByteBuffer.wrap(Bytes.concat(chunk, new byte[]{0})));
-                    logger.info("Чанк размером " + chunk.length + " отправлен на сервер.");
+                    System.out.println("Чанк размером " + chunk.length + " отправлен на сервер.");
                 }
             }
         }

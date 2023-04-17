@@ -1,19 +1,19 @@
 package src.commands;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import src.loggerUtils.LoggerManager;
-import src.network.requests.ExecuteScriptRequest;
-import src.network.requests.Request;
-import src.network.responses.ExecuteScriptResponse;
 import org.slf4j.Logger;
 import src.interfaces.Command;
 import src.interfaces.CommandManagerCustom;
+import src.network.MessageType;
+import src.network.Request;
+import src.network.Response;
+import src.utils.Argument;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.Scanner;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class ExecuteScriptCommand extends CommandBase implements Command {
@@ -25,23 +25,35 @@ public class ExecuteScriptCommand extends CommandBase implements Command {
         super(commandManager);
         scriptFilesBeingExecuted = new LinkedList<>();
         logger = LoggerManager.getLogger(ExecuteScriptCommand.class);
+        arguments = new LinkedList<>();
+        arguments.add(ImmutablePair.of(Argument.SCRIPT_HASH_MAP, 1));
+        arguments.add(ImmutablePair.of(Argument.NUMBER, 1));
     }
 
     @Override
     public boolean execute(String[] args){
-        var request = new ExecuteScriptRequest(recDepth, commandManager.getExecuteScriptHandyMap());
-        request.scriptName = args[0];
+        var request = new Request(MessageType.EXECUTE_SCRIPT);
+        request.requiredArguments.add(commandManager.getExecuteScriptHandyMap());
+        request.requiredArguments.add(recDepth);
+        request.requiredArguments.add(args[0]);
         return execute(request);
     }
 
     @Override
     public boolean execute(Request request) {
-        var executeScriptRequest = (ExecuteScriptRequest)request;
-        commandManager.setExecuteScriptHandyMap(executeScriptRequest.nameAndContents);
-        recDepth = executeScriptRequest.recDepth;
+        var scripts = (LinkedHashMap<String, List<String>>) request.requiredArguments.get(0);
+        recDepth = (Integer) request.requiredArguments.get(1);
+        commandManager.setExecuteScriptHandyMap(scripts);
+        String scriptName;
+        if(request.requiredArguments.size() == 3){
+            scriptName = (String)request.requiredArguments.get(2);
+        }
+        else{
+            scriptName = scripts.keySet().iterator().next();
+        }
         try {
-            if (scriptFilesBeingExecuted.contains(executeScriptRequest.scriptName)) {
-                var currentRecursionDepth = scriptFilesBeingExecuted.stream().filter(s -> s.equals(executeScriptRequest.scriptName)).count();
+            if (scriptFilesBeingExecuted.contains(scriptName)) {
+                var currentRecursionDepth = scriptFilesBeingExecuted.stream().filter(s -> s.equals(scriptName)).count();
                 if (currentRecursionDepth >= recDepth) {
                     return true;
                 }
@@ -49,9 +61,9 @@ public class ExecuteScriptCommand extends CommandBase implements Command {
             if (scriptFilesBeingExecuted.size() == 0) {
                 commandManager.getUndoManager().startOrEndTransaction();
             }
-            scriptFilesBeingExecuted.add(executeScriptRequest.scriptName);
+            scriptFilesBeingExecuted.add(scriptName);
 
-            Iterator<String> reader = executeScriptRequest.nameAndContents.get(executeScriptRequest.scriptName).listIterator();
+            Iterator<String> reader = scripts.get(scriptName).listIterator();
             String command;
             commandManager.getInputService().setIterator(reader);
             while (reader.hasNext() && (command = reader.next()) != null) {
@@ -60,18 +72,19 @@ public class ExecuteScriptCommand extends CommandBase implements Command {
             }
             logger.info("Commands ended.");
 
-            scriptFilesBeingExecuted.remove(executeScriptRequest.scriptName);
+            scriptFilesBeingExecuted.remove(scriptName);
             if (scriptFilesBeingExecuted.size() == 0) {
                 commandManager.getUndoManager().startOrEndTransaction();
             }
         } catch (Exception fileNotFoundException) {
             logger.info("File not found. Try again.");
-            var response = new ExecuteScriptResponse(false, "File not found. Try again.");
+            var response = new
+                    Response("File not found. Try again.");
             sendToClient(response);
             return true;
         }
-        var response = new ExecuteScriptResponse(false, null);
-        response.setMessageForClient("file was executed successfully");
+        var response = new
+                Response("file was executed successfully");
         sendToClient(response);
         return true;
     }
