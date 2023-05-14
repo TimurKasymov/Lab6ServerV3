@@ -33,9 +33,9 @@ public class UndoCommand extends CommandBase implements Command {
     public boolean execute(Request request) {
         var resp = new Response();
         var num = (Integer)request.requiredArguments.get(0);
-        commandManager.getUndoManager().undoCommands(num);
+        //commandManager.getUndoManager().undoCommands(num);
         resp.serverResponseToCommand = "commands were successfully canceled";
-        sendToClient(resp);
+        sendToClient(resp, request);
         return true;
     }
 

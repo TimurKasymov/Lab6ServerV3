@@ -7,7 +7,8 @@ import java.io.*;
 
 public class SerializationManager {
 
-    public byte[] serialize(Object object) {
+    // no need for synchronization because each object in this method is created with every call
+    public byte[]  serialize(Object object) {
         LoggerManager.getLogger(SerializationManager.class).info("starting to convert obj to bytes..");
 
         try (ByteArrayOutputStream bos = new ByteArrayOutputStream();

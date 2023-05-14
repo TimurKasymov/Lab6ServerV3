@@ -9,8 +9,15 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.*;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 public class TCPServer {
@@ -21,14 +28,26 @@ public class TCPServer {
     private SendingManager sendingManager;
     private SerializationManager serializationManager;
     private Selector selector;
+    private ForkJoinPool forkJoinPool;
+    private ExecutorService executorService;
 
     public TCPServer(int port, ReceivingManager receivingManager, CommandManagerCustom commandManager) {
+        executorService = Executors.newFixedThreadPool(3);
+        forkJoinPool = new ForkJoinPool();
         this.port = port;
         this.receivingManager = receivingManager;
         this.commandManager = commandManager;
         this.sendingManager = new SendingManager();
         this.serializationManager = new SerializationManager();
-        this.sessions = new HashSet<>();
+        this.sessions = (HashSet<SocketChannel>)Collections.synchronizedSet(new HashSet<SocketChannel>());
+        Runtime.getRuntime().addShutdownHook(new Thread(()-> {
+            try {
+                System.out.println("closing selector...");
+                selector.close();
+            } catch (IOException e) {
+                System.err.println(e.getMessage());
+            }
+        }));
     }
 
     public HashSet<SocketChannel> getSessions() {
@@ -49,6 +68,7 @@ public class TCPServer {
             serverSocketChannel.bind(socketAddress, port);
             serverSocketChannel.configureBlocking(false);
             serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
+
             System.out.println("Server started...");
             while (true) {
                 // blocking, wait for events
@@ -60,34 +80,37 @@ public class TCPServer {
                     if (!key.isValid()) continue;
                     if (key.isAcceptable()) accept(key);
                     else if (key.isReadable()) {
-                        var result = receivingManager.read(key);
-                        if(result == null)
-                            continue;
-                        commandManager.setSendingToClientPort(receivingManager.comingFromClientPort);
-                        Request request;
-                        // object is done being transferred
-                        var res = result.getLeft();
-                        int p = 1023;
-                        if (res == null)
-                            continue;
-                        for (int i = res.length - 1; i > -1; i--) {
-                            if (res[i] != 0) {
-                                p = i;
-                                break;
-                            }
-                        }
-                        var cutres = Arrays.copyOfRange(res, 0, p+1);
-                        var  obj =  serializationManager.deserialize(cutres);
-                        if ((Request)obj != null) {
-                            request = (Request)obj;
-                            commandManager.setSocketChannel(result.getRight());
-                            var response = commandManager.executeCommand(request);
-                        }
+                        executorService.submit(() -> receivingManager.read(key, this::receivedRequestHandler));
                     }
                 }
             }
         } catch (IOException e) {
             LoggerManager.getLogger(TCPServer.class).error(e.getMessage());
+        }
+    }
+
+    public void receivedRequestHandler(ReadResults result){
+        if(result == null)
+            return;
+        Request request;
+        // object is done being transferred
+        var res = result.data;
+        int p = 1023;
+        if (res == null)
+            return;
+        for (int i = res.length - 1; i > -1; i--) {
+            if (res[i] != 0) {
+                p = i;
+                break;
+            }
+        }
+        var cutres = Arrays.copyOfRange(res, 0, p+1);
+        var  obj =  serializationManager.deserialize(cutres);
+        if ((Request)obj != null) {
+            request = (Request)obj;
+            request.clientPort = result.port;
+            request.interlayerChannel = result.socketChannel;
+            forkJoinPool.submit(()-> commandManager.executeCommand(request));
         }
     }
 
@@ -101,9 +124,5 @@ public class TCPServer {
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
-    }
-
-    private void handleRequest() {
-
     }
 }

@@ -23,7 +23,7 @@ public class ExecuteScriptCommand extends CommandBase implements Command {
 
     public ExecuteScriptCommand(CommandManagerCustom commandManager) {
         super(commandManager);
-        scriptFilesBeingExecuted = new LinkedList<>();
+        scriptFilesBeingExecuted = (LinkedList<String>)Collections.synchronizedCollection(new LinkedList<String>());
         logger = LoggerManager.getLogger(ExecuteScriptCommand.class);
         arguments = new LinkedList<>();
         arguments.add(ImmutablePair.of(Argument.SCRIPT_HASH_MAP, 1));
@@ -31,7 +31,7 @@ public class ExecuteScriptCommand extends CommandBase implements Command {
     }
 
     @Override
-    public boolean execute(String[] args){
+    public synchronized boolean execute(String[] args){
         var request = new Request(MessageType.EXECUTE_SCRIPT);
         request.requiredArguments.add(commandManager.getExecuteScriptHandyMap());
         request.requiredArguments.add(recDepth);
@@ -40,7 +40,7 @@ public class ExecuteScriptCommand extends CommandBase implements Command {
     }
 
     @Override
-    public boolean execute(Request request) {
+    public synchronized boolean execute(Request request) {
         var scripts = (LinkedHashMap<String, List<String>>) request.requiredArguments.get(0);
         recDepth = (Integer) request.requiredArguments.get(1);
         commandManager.setExecuteScriptHandyMap(scripts);
@@ -58,9 +58,9 @@ public class ExecuteScriptCommand extends CommandBase implements Command {
                     return true;
                 }
             }
-            if (scriptFilesBeingExecuted.size() == 0) {
-                commandManager.getUndoManager().startOrEndTransaction();
-            }
+            //if (scriptFilesBeingExecuted.size() == 0) {
+            //    commandManager.getUndoManager().startOrEndTransaction();
+            //}
             scriptFilesBeingExecuted.add(scriptName);
 
             Iterator<String> reader = scripts.get(scriptName).listIterator();
@@ -73,19 +73,19 @@ public class ExecuteScriptCommand extends CommandBase implements Command {
             logger.info("Commands ended.");
 
             scriptFilesBeingExecuted.remove(scriptName);
-            if (scriptFilesBeingExecuted.size() == 0) {
-                commandManager.getUndoManager().startOrEndTransaction();
-            }
+            //if (scriptFilesBeingExecuted.size() == 0) {
+                //commandManager.getUndoManager().startOrEndTransaction();
+            //}
         } catch (Exception fileNotFoundException) {
             logger.info("File not found. Try again.");
             var response = new
                     Response("File not found. Try again.");
-            sendToClient(response);
+            sendToClient(response, request);
             return true;
         }
         var response = new
                 Response("file was executed successfully");
-        sendToClient(response);
+        sendToClient(response, request);
         return true;
     }
 

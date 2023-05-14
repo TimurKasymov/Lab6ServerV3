@@ -33,7 +33,7 @@ public class HistoryCommand extends CommandBase implements Command {
         }
         var response = new Response(null);
         response.serverResponseToCommand = str.toString();
-        sendToClient(response);
+        sendToClient(response, request);
         return true;
     }
 

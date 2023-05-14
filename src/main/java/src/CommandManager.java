@@ -1,8 +1,9 @@
 package src;
 
 import org.apache.commons.lang3.tuple.Pair;
+import src.container.SettingsContainer;
 import src.converters.SerializationManager;
-import src.loggerUtils.LoggerManager;
+import src.db.DI.DbCollectionManager;
 import src.models.Product;
 import src.commands.*;
 import src.commands.AddCommand;
@@ -10,44 +11,49 @@ import src.container.CommandsContainer;
 import src.interfaces.*;
 import src.interfaces.CollectionCustom;
 import src.interfaces.Command;
+import src.models.User;
 import src.network.MessageType;
 import src.network.Request;
 import src.network.Response;
 import src.network_utils.SendingManager;
 import src.service.InputService;
 import src.utils.Argument;
-import src.utils.Commands;
 
-import java.io.File;
-import java.nio.channels.SocketChannel;
+import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class CommandManager implements CommandManagerCustom {
 
-    private RealUndoManager undoManager;
+    public LocalDateTime initializationTime = LocalDateTime.now();
+    private DbCollectionManager<Product> productDbCollectionManager;
+    private DbCollectionManager<User> userDbCollectionManager;
+    private List<Product> products;
+    private InputService inputService;
+    private List<User> users;
     private String currentScriptBeingExecuted;
     private HashMap<String, List<String>> executeScriptHandyMap;
-    private CollectionCustom<Product> collectionManager = null;
-    private final InputService inputService;
     private Scanner scanner;
-    private SocketChannel clientChannel;
     private final HashMap<String, Command> commandsMap;
     private final SendingManager sendingManager;
     private final LinkedList<String> commandHistory;
-    public Integer sendingToClientPort;
     private final SerializationManager serializationManager;
-
+    private final ExecutorService executorService;
+    private final Lock lock;
     /**
      * Constructor for making a src.src.CommandManager
      *
-     * @param manager - collection with objects to manipulate
      */
-    public CommandManager(CollectionCustom<Product> manager, InputService inputService, SerializationManager serializationManager) {
-        this.collectionManager = manager;
+    public CommandManager(SerializationManager serializationManager) {
+        this.lock = new ReentrantLock();
+        this.inputService = new InputService();
         this.serializationManager = serializationManager;
-        this.inputService = inputService;
         this.sendingManager = new SendingManager();
-        commandHistory = new LinkedList<>();
+        commandHistory = (LinkedList<String>)Collections.synchronizedCollection(new LinkedList<String>());
+        executorService = Executors.newFixedThreadPool(3);
         commandsMap = new HashMap<>();
         commandsMap.put("add", new AddCommand(this));
         commandsMap.put("clear", new ClearCommand(this));
@@ -65,14 +71,40 @@ public class CommandManager implements CommandManagerCustom {
         commandsMap.put("filter_by_manufacture_cost", new FilterByManufactureCostCommand(this));
         commandsMap.put("undo_commands", new UndoCommand(this));
         CommandsContainer.setCommands(commandsMap.keySet().stream().toList());
-        try {
+        /*try {
             this.undoManager = new RealUndoManager(new File("product_logging.xml"), new File("command_logging.txt"), collectionManager);
         } catch (Exception e) {
             LoggerManager.getLogger(CommandManager.class).error("fatal error, logging files can not be created or opened");
             System.exit(0);
         }
+         */
     }
 
+    @Override
+    public InputService getInputService(){
+        return inputService;
+    }
+
+    @Override
+    public LocalDateTime getInitializationTime() {
+        return initializationTime;
+    }
+
+    @Override
+    public DbCollectionManager<Product> getDbProductManager() {
+        return productDbCollectionManager;
+    }
+
+    @Override
+    public DbCollectionManager<User> getDbUserManager() {
+        return userDbCollectionManager;
+    }
+
+    @Override
+    public LinkedList<Product> getProducts(){
+        return (LinkedList<Product>)this.products;
+    }
+    public ExecutorService getExecutorService() {return this.executorService;}
     public void setCurrentScriptBeingExecuted(String name) {
         this.currentScriptBeingExecuted = name;
     }
@@ -81,30 +113,12 @@ public class CommandManager implements CommandManagerCustom {
         return this.currentScriptBeingExecuted;
     }
 
-    @Override
-    public int getClientPort(){
-        return sendingToClientPort;
-    }
-    @Override
-    public void setSendingToClientPort(Integer sendingToClientPort) {
-        this.sendingToClientPort = sendingToClientPort;
-    }
-
     public void setExecuteScriptHandyMap(HashMap<String, List<String>> executeScriptHandyMap) {
         this.executeScriptHandyMap = executeScriptHandyMap;
     }
 
     public HashMap<String, List<String>> getExecuteScriptHandyMap() {
         return executeScriptHandyMap;
-    }
-
-    public SocketChannel getClientChannel() {
-        return clientChannel;
-    }
-
-    @Override
-    public void setSocketChannel(SocketChannel socketChannel) {
-        this.clientChannel = socketChannel;
     }
 
     public SendingManager getSendingManager() {
@@ -120,16 +134,17 @@ public class CommandManager implements CommandManagerCustom {
         return this.scanner;
     }
 
-    public boolean executeCommand(String userInput) {
+    // sync
+    public void executeCommand(String userInput) {
         var commandUnits = userInput.trim().toLowerCase().split(" ", 2);
         if (!commandsMap.containsKey(commandUnits[0])) {
-            return false;
+            return;
         }
         var enteredCommand = commandUnits[0].trim().toLowerCase();
         var command = commandsMap.get(enteredCommand);
         commandHistory.add(enteredCommand);
         command.execute(Arrays.copyOfRange(commandUnits, 1, commandUnits.length));
-        return true;
+        return;
     }
 
     /**
@@ -137,10 +152,20 @@ public class CommandManager implements CommandManagerCustom {
      *
      * @return the execution was successful
      */
-    public boolean executeCommand(Request request) {
-        var lastLoadedFile = collectionManager.getLoadedFile();
-        if(lastLoadedFile != null)
-            collectionManager.load(lastLoadedFile);
+    public void executeCommand(Request request) {
+        // if it is the last server that accessed the db then do not reload collection
+        // otherwise reload to get new products inserted by other servers
+        lock.lock();
+        try{
+            if(! productDbCollectionManager.isThisLastServerToTouchDB(SettingsContainer.getSettings().localPort)){
+                productDbCollectionManager.markThatThisServerHasMadeChangesToDb();
+                products = productDbCollectionManager.load();
+                users = userDbCollectionManager.load();
+            }
+        }finally {
+            lock.unlock();
+        }
+        // sync
         if (request.messageType == MessageType.ALL_AVAILABLE_COMMANDS) {
             var commandPlsArguments = new HashMap<String, List<Pair<Argument, Integer>>>();
             for (var comm : commandsMap.keySet()) {
@@ -150,23 +175,25 @@ public class CommandManager implements CommandManagerCustom {
             response.messageType = MessageType.ALL_AVAILABLE_COMMANDS;
             response.commandRequirements = commandPlsArguments;
             var data = serializationManager.serialize(response);
-            sendingManager.send(data, getClientChannel(), sendingToClientPort);
-            return true;
+            sendingManager.send(data, request.interlayerChannel, request.clientPort);
+            return;
         }
+        // sync
         if (request.messageType == MessageType.LOAD_COLLECTION) {
-            var successfully = collectionManager.load(new File((String) request.requiredArguments.get(0)));
+            //var successfully = collectionManager.load(new File((String) request.requiredArguments.get(0)));
             var response = new Response("collection was loaded successfully");
             var data = serializationManager.serialize(response);
-            sendingManager.send(data, getClientChannel(), sendingToClientPort);
-            return true;
+            sendingManager.send(data, request.interlayerChannel, request.clientPort);
+            return;
         }
+        // sync
         var commandName = request.messageType;
         var command = commandsMap.get(commandName.getCommandDesc());
         commandHistory.add(commandName.getCommandDesc());
         var result = command.execute(request);
-        collectionManager.save();
-        undoManager.saveLoggingFiles();
-        return result;
+        // collectionManager.save();
+        //undoManager.saveLoggingFiles();
+        return;
     }
 
 
@@ -180,21 +207,6 @@ public class CommandManager implements CommandManagerCustom {
         var commandInfos = new ArrayList<String>(commandsMap.size());
         commandsMap.forEach((key, value) -> commandInfos.add(key + " - " + value.getInfo()));
         return commandInfos;
-    }
-
-    @Override
-    public InputService getInputService() {
-        return inputService;
-    }
-
-    @Override
-    public CollectionCustom<Product> getCollectionManager() {
-        return collectionManager;
-    }
-
-    @Override
-    public RealUndoManager getUndoManager() {
-        return undoManager;
     }
 
 }

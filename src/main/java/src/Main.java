@@ -7,6 +7,7 @@ import src.network_utils.TCPServer;
 import src.service.InputService;
 
 import java.io.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Main {
 
@@ -18,17 +19,15 @@ public class Main {
             var settings = SettingsContainer.getSettings();
             var loader = new XmlFileHandler();
             var collection = new CollectionManager(loader);
-            var commandManager = new CommandManager(collection, new InputService(), new SerializationManager());
-            var receivingManager = new ReceivingManager();
+            var commandManager = new CommandManager(new SerializationManager());
+            var receivingManager = new ReceivingManager(new ReentrantLock());
             server = new TCPServer(settings.localPort, receivingManager, commandManager);
             receivingManager.setSessions(server.getSessions());
             server.start();
 
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             System.out.println(e.getMessage());
-        }
-        finally {
+        } finally {
         }
     }
 

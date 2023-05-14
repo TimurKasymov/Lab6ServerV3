@@ -15,7 +15,7 @@ public class SendingManager {
     private final int DATA_SIZE = PACKET_SIZE - 1;
 
 
-
+    // no need for synchronization because client channel
     public void send(byte[] data, SocketChannel socketChannel, Integer sendingToClientPort) {
         var logger = LoggerManager.getLogger(SendingManager.class);
 

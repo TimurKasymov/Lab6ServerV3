@@ -29,7 +29,7 @@ public class FilterGreaterThanPriceCommand extends CommandBase implements Comman
     public boolean execute(Request request) {
         var price = (Float) request.requiredArguments.get(0);
         var response = new Response();
-        var products = commandManager.getCollectionManager().get();
+        var products = commandManager.getProducts();
         try {
             var flag = false;
             for (var prod : products) {
@@ -40,11 +40,11 @@ public class FilterGreaterThanPriceCommand extends CommandBase implements Comman
             }
             if (!flag)
                 response.serverResponseToCommand = "no such elements found";
-            sendToClient(response);
+            sendToClient(response, request);
             return true;
         } catch (NumberFormatException | IndexOutOfBoundsException exception) {
             response.serverResponseToCommand = "ID must be provided and it must be a number. Try typing this command again";
-            sendToClient(response);
+            sendToClient(response, request);
             return false;
         }
     }

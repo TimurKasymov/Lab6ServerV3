@@ -19,18 +19,19 @@ import java.util.InputMismatchException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 
 public class AddCommand extends CommandBase implements Command {
 
     private final Logger logger;
-
+    private Lock lock = new ReentrantLock();
     public AddCommand(CommandManagerCustom commandManager) {
         super(commandManager);
         logger = LoggerManager.getLogger(AddCommand.class);
         arguments = new LinkedList<>();
         arguments.add(ImmutablePair.of(Argument.PRODUCT, 1));
-
     }
 
     @Override
@@ -41,10 +42,18 @@ public class AddCommand extends CommandBase implements Command {
     private Product fillInProduct() throws CommandInterruptionException {
         var inputService = commandManager.getInputService();
         var maxId = Long.MIN_VALUE;
-        var products = commandManager.getCollectionManager().get();
-        for (var product : products) {
-            maxId = Long.max(maxId, product.getId());
+        var products = commandManager.getProducts();
+
+        lock.lock();
+        try {
+            for (var product : products) {
+                maxId = Long.max(maxId, product.getId());
+            }
         }
+        finally {
+            lock.unlock();
+        }
+
         var id = products.size() == 0 ? 1 : maxId + 1;
 
         var name = inputService.inputName();
@@ -81,9 +90,15 @@ public class AddCommand extends CommandBase implements Command {
             product = (Product)request.requiredArguments.get(0);
 
             var maxId = Long.MIN_VALUE;
-            var products = commandManager.getCollectionManager().get();
-            for (var prod : products) {
-                maxId = Long.max(maxId, prod.getId());
+            var products = commandManager.getProducts();
+            lock.lock();
+            try {
+                for (var prod : products) {
+                    maxId = Long.max(maxId, prod.getId());
+                }
+            }
+            finally {
+                lock.unlock();
             }
             var id = products.size() == 0 ? 1 : maxId + 1;
             product.setId(id);
@@ -91,24 +106,30 @@ public class AddCommand extends CommandBase implements Command {
             if(!ValidatorService.validateProduct(product))
             {
                 var resp = new Response("product has not met validation criteria");
-                sendToClient(resp);
+                sendToClient(resp, request);
                 return true;
             }
-            commandManager.getUndoManager().logAddCommand(id);
-            if (products.size() == 0) {
-                products.add(product);
-                var resp = new Response("product with id " + id + " added");
+            //commandManager.getUndoManager().logAddCommand(id);
+            lock.lock();
+            try {
+                commandManager.getDbProductManager().insert(product);
+                if (products.size() == 0) {
+                    products.add(product);
+                    var resp = new Response("product with id " + id + " added");
+                } else if (products.peekLast().getId() == maxId)
+                    products.add(product);
+                else
+                    products.addFirst(product);
+                var response = new Response("product with id " + id + " added");
+                sendToClient(response, request);
+                return true;
             }
-            else if (products.peekLast().getId() == maxId)
-                products.add(product);
-            else
-                products.addFirst(product);
-            var response = new Response("product with id " + id + " added");
-            sendToClient(response);
-            return true;
+            finally {
+                lock.unlock();
+            }
         } catch (NoSuchElementException exception) {
             var response = new Response("adding product was canceled");
-            sendToClient(response);
+            sendToClient(response, request);
         } catch (CommandInterruptionException e) {
             if (e.getInterruptionCause() == InterruptionCause.EXIT)
                 logger.info("adding product was successfully canceled");

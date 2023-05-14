@@ -3,63 +3,76 @@ package src.network_utils;
 import src.loggerUtils.LoggerManager;
 
 import java.io.IOException;
-import java.net.SocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import com.google.common.primitives.Bytes;
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class ReceivingManager {
 
     private HashSet<SocketChannel> sessions = new HashSet<>();
     private final HashMap<Integer, byte[]> receivedData;
-    public Integer comingFromClientPort;
+    private final Lock lock;
 
-    public ReceivingManager(){
+    public ReceivingManager(ReentrantLock lock){
         this.receivedData = new HashMap<>();
+        this.lock = lock;
     }
 
     public void setSessions(HashSet<SocketChannel> sessions){
         this.sessions = sessions;
     }
-    public Pair<byte[], SocketChannel> read(SelectionKey key) {
+    public void read(SelectionKey key, ReceivedRequestHandlerFuncInterface methodToCallOnRequestBeingDoneTransferring) {
         SocketChannel channel = (SocketChannel) key.channel();
         try {
             ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
             int numRead = channel.read(byteBuffer);
             if (numRead == -1) {
-                this.sessions.remove(channel);
-                LoggerManager.getLogger(TCPServer.class)
-                        .info("client " + channel.socket().getRemoteSocketAddress() + " disconnected");
-                channel.close();
-                key.cancel();
-                return null;
+                lock.lock();
+                try{
+                    this.sessions.remove(channel);
+                    LoggerManager.getLogger(TCPServer.class)
+                            .info("client " + channel.socket().getRemoteSocketAddress() + " disconnected");
+                    channel.close();
+                    key.cancel();
+                }
+                finally {
+                    lock.unlock();
+                }
+                return;
             }
             //being sent from server
             var strB = new StringBuilder();
             for(int i = 0; i < 5; i++){
                 strB.append(((Byte) byteBuffer.array()[numRead-2-i]));
             }
-            comingFromClientPort = Integer.parseInt(strB.reverse().toString());
-            if(!receivedData.containsKey(comingFromClientPort)){
-                receivedData.put(comingFromClientPort, Arrays.copyOf(byteBuffer.array(), byteBuffer.array().length - 6));
+            lock.lock();
+            try{
+                var comingFromClientPort = Integer.parseInt(strB.reverse().toString());
+                if(!receivedData.containsKey(comingFromClientPort)){
+                    receivedData.put(comingFromClientPort, Arrays.copyOf(byteBuffer.array(), byteBuffer.array().length - 6));
+                }
+                else{
+                    var arr = receivedData.get(comingFromClientPort);
+                    arr = Bytes.concat(arr, Arrays.copyOf(byteBuffer.array(), byteBuffer.array().length - 6));
+                }
+                // reached the end of the object being sent
+                if(byteBuffer.array()[numRead-1] == 1){
+                    receivedData.remove(comingFromClientPort);
+                    var readResults = new ReadResults(channel, receivedData.get(comingFromClientPort), comingFromClientPort);
+                    methodToCallOnRequestBeingDoneTransferring.receivedRequestHandler(readResults);
+                    return;
+                }
             }
-            else{
-                var arr = receivedData.get(comingFromClientPort);
-                arr = Bytes.concat(arr, Arrays.copyOf(byteBuffer.array(), byteBuffer.array().length - 6));
-            }
-            // reached the end of the object being sent
-            if(byteBuffer.array()[numRead-1] == 1){
-                var pair = ImmutablePair.of(receivedData.get(comingFromClientPort), channel);
-                receivedData.remove(comingFromClientPort);
-                return pair;
+            finally {
+                lock.unlock();
             }
         }
         catch (IOException e){
@@ -77,6 +90,6 @@ public class ReceivingManager {
                 }
             }
         }
-        return null;
+        return;
     }
 }

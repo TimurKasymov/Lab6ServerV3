@@ -38,7 +38,7 @@ public class UpdateByIdCommand extends CommandBase implements Command {
     @Override
     public boolean execute(String[] args) {
         try {
-            var products = commandManager.getCollectionManager().get();
+            var products = commandManager.getProducts();
             var name = inputService.inputName();
             var coord = inputService.inputCoordinates();
             var price = inputService.inputPrice();
@@ -52,6 +52,7 @@ public class UpdateByIdCommand extends CommandBase implements Command {
                     yesOrNo = scanner.nextInt();
                     break;
                 } catch (InputMismatchException e) {
+                    logger.info(e.toString());
                 }
             }
             var prod = new Product(Long.parseLong(args[0]), name, coord, price, manufCost,
@@ -77,16 +78,16 @@ public class UpdateByIdCommand extends CommandBase implements Command {
         var resp = new Response(null);
         var prod = (Product) request.requiredArguments.get(0);
         var id = prod.getId();
-        var products = commandManager.getCollectionManager().get();
+        var products = commandManager.getProducts();
         if (id <= 0) {
             resp.serverResponseToCommand = "ID must be a number greater than 0. Try typing this command again";
-            sendToClient(resp);
+            sendToClient(resp, request);
             return false;
         }
         if(!ValidatorService.validateProduct(prod))
         {
             resp = new Response("product has not met validation criteria");
-            sendToClient(resp);
+            sendToClient(resp, request);
             return true;
         }
         logger.info("updating product with id: " + id);
@@ -95,13 +96,14 @@ public class UpdateByIdCommand extends CommandBase implements Command {
             resp.serverResponseToCommand = "no element with such id";
         }
         else{
+            commandManager.getDbProductManager().update((Product)match[0]);
             var idInCollection = products.indexOf((Product)match[0]);
-            commandManager.getUndoManager().logUpdateCommand(prod);
+            //commandManager.getUndoManager().logUpdateCommand(prod);
             products.remove(prod);
             products.add(idInCollection, prod);
             resp.serverResponseToCommand = "Element was updated successfully";
         }
-        sendToClient(resp);
+        sendToClient(resp, request);
         return true;
     }
 

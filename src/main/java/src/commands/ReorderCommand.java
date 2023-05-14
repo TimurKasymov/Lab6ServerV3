@@ -26,12 +26,12 @@ public class ReorderCommand extends CommandBase implements Command {
     @Override
     public boolean execute(Request request) {
         var resp = new Response();
-        Collections.reverse(commandManager.getCollectionManager().get());
-        commandManager
-                .getUndoManager()
-                .logReorderCommand();
+        Collections.reverse(commandManager.getProducts());
+        //commandManager
+        //        .getUndoManager()
+        //        .logReorderCommand();
         resp.serverResponseToCommand = "collection was reordered successfully";
-        sendToClient(resp);
+        sendToClient(resp, request);
         return true;
     }
 

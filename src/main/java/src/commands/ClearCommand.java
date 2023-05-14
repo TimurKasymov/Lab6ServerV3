@@ -20,18 +20,16 @@ public class ClearCommand extends CommandBase implements Command {
 
     @Override
     public boolean execute(Request request) {
-        var prods = commandManager.getCollectionManager().get();
+        var prods = commandManager.getProducts();
         var numbOFLoops = prods.size();
-        commandManager.getUndoManager().startOrEndTransaction();
+        //commandManager.getUndoManager().startOrEndTransaction();
         for (int i = 0; i < numbOFLoops; i++) {
-            var req = new Request(MessageType.CLEAR);
-            req.requiredArguments.add((long)i);
+            var req = new Request(MessageType.REMOVE_FIRST);
             commandManager.executeCommand(req);
         }
-        commandManager.getUndoManager().startOrEndTransaction();
-
+        //commandManager.getUndoManager().startOrEndTransaction();
         var response = new Response();
-        sendToClient(response);
+        sendToClient(response, request);
         return true;
     }
 

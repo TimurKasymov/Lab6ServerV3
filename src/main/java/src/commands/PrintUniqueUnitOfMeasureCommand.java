@@ -24,9 +24,9 @@ public class PrintUniqueUnitOfMeasureCommand extends CommandBase implements Comm
     }
 
     @Override
-    public boolean execute(Request request) {
+    public synchronized boolean execute(Request request) {
         var response = new Response();
-        var products = commandManager.getCollectionManager().get();
+        var products = commandManager.getProducts();
         var set = new HashSet<UnitOfMeasure>();
         var res = new StringBuilder();
         for(var prod : products){
@@ -38,7 +38,7 @@ public class PrintUniqueUnitOfMeasureCommand extends CommandBase implements Comm
             res.append(unit.toString()).append('\n');
         }
         response.serverResponseToCommand = res.toString();
-        sendToClient(response);
+        sendToClient(response, request);
         return true;
     }
 

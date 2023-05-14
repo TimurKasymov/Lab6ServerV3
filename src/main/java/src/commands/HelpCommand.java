@@ -17,7 +17,6 @@ public class HelpCommand extends CommandBase implements Command {
     public HelpCommand(CommandManagerCustom commandManager){
         super(commandManager);
         arguments = new LinkedList<>();
-        arguments.add(ImmutablePair.of(Argument.PRICE, 1));
     }
 
 
@@ -27,7 +26,7 @@ public class HelpCommand extends CommandBase implements Command {
     }
 
     @Override
-    public boolean execute(Request request) {
+    public synchronized boolean execute(Request request) {
         var response = new Response();
         StringBuilder sb = new StringBuilder();
         for (var commInfo : commandManager.getCommandsInfo()
@@ -35,7 +34,7 @@ public class HelpCommand extends CommandBase implements Command {
             sb.append(commInfo).append('\n');
         }
         response.serverResponseToCommand = sb.toString();
-        sendToClient(response);
+        sendToClient(response, request);
         return true;
     }
 

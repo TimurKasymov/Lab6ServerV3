@@ -10,6 +10,7 @@ import src.utils.Argument;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class RemoveFirstCommand extends CommandBase implements Command {
 
@@ -27,14 +28,17 @@ public class RemoveFirstCommand extends CommandBase implements Command {
     @Override
     public boolean execute(Request request) {
         var resp = new Response();
-        if (commandManager.getCollectionManager().get().size() == 0) {
+        if (commandManager.getProducts().size() == 0) {
             resp.serverResponseToCommand = "collection is empty";
             return true;
         }
-        var removeCommand = "remove_by_id 1";
+
+        var fisrtEl = commandManager.getProducts().stream().sorted().toList().get(0);
+        commandManager.getDbProductManager().delete(fisrtEl);
+        var removeCommand = "remove_by_id " + fisrtEl.getId();
         commandManager.executeCommand(removeCommand);
         resp.serverResponseToCommand = "first product successfully removed";
-        sendToClient(resp);
+        sendToClient(resp, request);
         return true;
     }
 

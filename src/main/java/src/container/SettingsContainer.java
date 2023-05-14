@@ -28,7 +28,7 @@ public class SettingsContainer {
         ObjectMapper mapper = new ObjectMapper();
         settings = mapper.readValue(str, SettingsModel.class);
     }
-    public synchronized static SettingsModel getSettings(){
+    public static SettingsModel getSettings(){
         return settings;
     }
 }

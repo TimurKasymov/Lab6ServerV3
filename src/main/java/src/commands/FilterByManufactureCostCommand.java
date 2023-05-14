@@ -33,7 +33,7 @@ public class FilterByManufactureCostCommand extends CommandBase implements Comma
         try {
             response = new Response(null);
             var manufactureCost = (Double) request.requiredArguments.get(0);
-            var products = commandManager.getCollectionManager().get();
+            var products = commandManager.getProducts();
             for (Product product : products) {
                 if(product.getManufactureCost().doubleValue() == manufactureCost)
                     response.serverResponseToCommand += product.toString() + "\n\n";
@@ -42,7 +42,7 @@ public class FilterByManufactureCostCommand extends CommandBase implements Comma
         catch (Exception exception){
             response = new Response(String.format("Manufacture cost must be from %s to %s. Try typing this command again", 0, Double.MAX_VALUE));
         }
-        sendToClient(response);
+        sendToClient(response, request);
         return true;
     }
 

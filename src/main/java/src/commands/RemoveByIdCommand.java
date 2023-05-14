@@ -29,16 +29,17 @@ public class RemoveByIdCommand extends CommandBase implements Command {
     }
 
     @Override
-    public boolean execute(Request request) {
+    public synchronized boolean execute(Request request) {
         var resp = new Response();
         try {
             var id = (Long)request.requiredArguments.get(0);
-            var prods = commandManager.getCollectionManager().get();
+            var prods = commandManager.getProducts();
             if (prods.stream().map(Product::getId).toList().contains(id)) {
                 var prodWithId = prods.stream().filter(p -> Objects.equals(p.getId(), id)).findFirst();
                 if (prodWithId.isEmpty())
                     throw new NumberFormatException();
-                commandManager.getUndoManager().logRemoveCommand(prodWithId.get());
+                //commandManager.getUndoManager().logRemoveCommand(prodWithId.get());
+                commandManager.getDbProductManager().delete(prodWithId.get());
                 prods.remove(prodWithId.get());
                 resp.serverResponseToCommand = String.format("product with id: %s was successfully removed", prodWithId.get().getId());
                 return true;
@@ -46,10 +47,10 @@ public class RemoveByIdCommand extends CommandBase implements Command {
             resp.serverResponseToCommand = "Element with this id doesnt exist";
         } catch (NumberFormatException exception) {
             resp.serverResponseToCommand = "ID must be an number. Try typing this command again";
-            sendToClient(resp);
+            sendToClient(resp, request);
             return false;
         }
-        sendToClient(resp);
+        sendToClient(resp, request);
         return true;
     }
 

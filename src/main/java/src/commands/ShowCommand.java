@@ -25,10 +25,10 @@ public class ShowCommand extends CommandBase implements Command {
     }
 
     @Override
-    public boolean execute(Request request) {
+    public synchronized boolean execute(Request request) {
         var resp = new Response();
         var prods = new StringBuilder();
-        var products = commandManager.getCollectionManager().get();
+        var products = commandManager.getProducts();
         if(products == null || products.size() == 0){
             resp.serverResponseToCommand = "there is no products yet.. add a new one";
             return true;
@@ -38,7 +38,7 @@ public class ShowCommand extends CommandBase implements Command {
             prods.append(mess);
         }
         resp.serverResponseToCommand = prods.toString();
-        sendToClient(resp);
+        sendToClient(resp, request);
         return true;
     }
 

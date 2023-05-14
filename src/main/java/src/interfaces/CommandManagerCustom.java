@@ -1,42 +1,40 @@
 package src.interfaces;
 
 import src.converters.SerializationManager;
+import src.db.DI.DbCollectionManager;
 import src.models.Product;
+import src.models.User;
 import src.network.Request;
-import src.RealUndoManager;
 import src.network_utils.SendingManager;
 import src.service.InputService;
 
 import java.nio.channels.SocketChannel;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Scanner;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
 
 
 public interface CommandManagerCustom {
     /** executes given command */
-    boolean executeCommand(Request userInput);
+    void executeCommand(Request userInput);
+    LinkedList<Product> getProducts();
     /** executes given command */
-    boolean executeCommand(String userInput);
+    void executeCommand(String userInput);
     /** gets the history of executed src.commands */
     List<String> getCommandHistory();
     /** gets the info about each command */
     List<String> getCommandsInfo();
     Scanner getScanner();
-
-        /** gets collection manager */
-    CollectionCustom<Product> getCollectionManager();
-    /** gets undoManager */
-    RealUndoManager getUndoManager();
-    public InputService getInputService();
     SendingManager getSendingManager();
     SerializationManager getSerializationManager();
-    SocketChannel getClientChannel();
     void setExecuteScriptHandyMap(HashMap<String, List<String>> executeScriptHandyMap);
     HashMap<String, List<String>> getExecuteScriptHandyMap();
-    void setSocketChannel(SocketChannel socketChannel);
     void setCurrentScriptBeingExecuted(String name);
     String getCurrentScriptBeingExecuted();
-    void setSendingToClientPort(Integer sendingToClientPort);
-    int getClientPort();
+    ExecutorService getExecutorService();
+    InputService getInputService();
+    LocalDateTime getInitializationTime();
+    DbCollectionManager<Product> getDbProductManager();
+    DbCollectionManager<User> getDbUserManager();
+
 }

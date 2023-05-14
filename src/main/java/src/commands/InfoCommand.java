@@ -3,6 +3,7 @@ package src.commands;
 import org.apache.commons.lang3.tuple.Pair;
 import src.interfaces.Command;
 import src.interfaces.CommandManagerCustom;
+import src.models.Product;
 import src.network.MessageType;
 import src.network.Request;
 import src.network.Response;
@@ -25,17 +26,16 @@ public class InfoCommand extends CommandBase implements Command {
 
     @Override
     public boolean execute(Request request) {
-        var products = commandManager.getCollectionManager().get();
-        var collection = commandManager.getCollectionManager();
-        var time = collection.getInitializationTime();
+        var products = commandManager.getProducts();
+        var time =commandManager.getInitializationTime();
         var timeFormatted = time == null ? "Collection was not initialized" : time
                 .atZone(ZoneId.of("Europe/Moscow"))
                 .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
-        var toPrint = String.format("type of colleciton: %s\ninitialization date: %s\nnumber of elements: %s", collection.getElementType().getName(),
+        var toPrint = String.format("type of colleciton: %s\ninitialization date: %s\nnumber of elements: %s", Product.class,
                 timeFormatted, products.size() );
         var response = new Response();
         response.serverResponseToCommand = toPrint;
-        sendToClient(response);
+        sendToClient(response, request);
         return true;
     }
 

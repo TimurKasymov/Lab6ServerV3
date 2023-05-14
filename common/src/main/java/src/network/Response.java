@@ -4,11 +4,11 @@ import org.apache.commons.lang3.tuple.Pair;
 import src.utils.Argument;
 
 import java.io.Serializable;
+import java.nio.channels.SocketChannel;
 import java.util.HashMap;
 import java.util.List;
 
-public class Response  implements Serializable {
-
+public class Response implements Serializable {
     public MessageType messageType;
     public HashMap<String, List<Pair<Argument, Integer>>> commandRequirements;
     public String serverResponseToCommand;
@@ -20,7 +20,7 @@ public class Response  implements Serializable {
     public Response() {
     }
 
-    public void setCommandRequirements(HashMap<String, List<Pair<Argument, Integer>>> commandRequirements){
+    public void setCommandRequirements(HashMap<String, List<Pair<Argument, Integer>>> commandRequirements) {
         this.commandRequirements = commandRequirements;
     }
 }

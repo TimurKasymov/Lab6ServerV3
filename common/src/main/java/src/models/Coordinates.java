@@ -9,11 +9,19 @@ import java.io.Serializable;
 @XmlRootElement()
 public class Coordinates implements Serializable {
     @XmlElement
+    private int id; //Поле не может быть null
+    @XmlElement
     private Double x; //Поле не может быть null
     @XmlElement
     private float y;
 
     public Coordinates(){}
+    public Coordinates(int id, Double x, Float y) {
+        this.x = x;
+        this.y = y;
+        this.id = id;
+    }
+
     public Coordinates(Double x, Float y) {
         this.x = x;
         this.y = y;
@@ -27,7 +35,9 @@ public class Coordinates implements Serializable {
                 ", y=" + y +
                 '}';
     }
-
+    public int getId(){
+        return id;
+    }
     public Double getX() {
         return x;
     }

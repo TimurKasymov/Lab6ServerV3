@@ -9,9 +9,11 @@ import src.interfaces.CollectionCustom;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.slf4j.Logger;
 
-public class RealUndoManager {
+/*public class RealUndoManager {
 
     private static final String add = "add ";
     private static final String remove = "remove ";
@@ -31,11 +33,13 @@ public class RealUndoManager {
         this.xmlFile = xmlFile;
         this.messageHandler = LoggerManager.getLogger(CommandManager.class);
         this.commandsLogsFile = commandsLogsFile;
+        var lock = new ReentrantLock();
         try {
             xmlFileHandler = new XmlFileHandler();
             products = new Stack<>();
             commandsLogs = new Stack<>();
             this.realProductCollection = productCollection;
+            lock.lock();
             if (xmlFile.exists()) {
                 xmlFileHandler.load(xmlFile);
                 var prods = xmlFileHandler.get();
@@ -62,13 +66,16 @@ public class RealUndoManager {
         } catch (Exception e) {
             messageHandler.info(e.getMessage());
         }
+        finally {
+            lock.unlock();
+        }
     }
 
     public void startOrEndTransaction() {
         commandsLogs.push(transaction_delimiter);
     }
 
-    public void saveLoggingFiles() {
+    public synchronized void saveLoggingFiles() {
         try {
             new FileWriter(commandsLogsFile, false).close();
             this.commandsFileWriter = new BufferedWriter(new FileWriter(commandsLogsFile));
@@ -83,12 +90,12 @@ public class RealUndoManager {
         }
     }
 
-    private void handleLogging(Product element, String command) {
+    private synchronized void handleLogging(Product element, String command) {
         products.push(element);
         commandsLogs.push(command);
     }
 
-    public void logAddCommand(long idOfAddedElInReal) {
+    public synchronized void logAddCommand(long idOfAddedElInReal) {
         try {
             var toWrite = remove + idOfAddedElInReal;
             commandsLogs.push(toWrite);
@@ -100,7 +107,7 @@ public class RealUndoManager {
 
     }
 
-    public void logRemoveCommand(Product element) {
+    public synchronized void logRemoveCommand(Product element) {
         try {
             var foundReal = realProductCollection
                     .get()
@@ -117,7 +124,7 @@ public class RealUndoManager {
         }
     }
 
-    public void logReorderCommand() {
+    public synchronized void logReorderCommand() {
         try {
             var toWrite = "reverse ";
             commandsLogs.push(toWrite);
@@ -128,11 +135,11 @@ public class RealUndoManager {
         }
     }
 
-    public void logUpdateCommand(Product element) {
+    public synchronized void logUpdateCommand(Product element) {
         handleLogging(element, update + element.getId());
     }
 
-    public void undoCommands(int numberOfCommandsToUndo) {
+    public synchronized void undoCommands(int numberOfCommandsToUndo) {
         if(commandsLogs.isEmpty()){
             messageHandler.info("no src.commands to undo");
             return;
@@ -152,7 +159,7 @@ public class RealUndoManager {
         }
     }
 
-    private void handleCommandToUndo(@NotNull String commandToUndo) {
+    private synchronized void handleCommandToUndo(@NotNull String commandToUndo) {
         var args = commandToUndo.split(" ");
         var argsToHandlers = Arrays.stream(args).skip(1).toList();
         switch (args[0] + " ") {
@@ -163,7 +170,7 @@ public class RealUndoManager {
         }
     }
 
-    private void handleAddCommand(List<String> args) {
+    private synchronized void handleAddCommand(List<String> args) {
         try {
             var id = Integer.parseInt(args.get(0));
             var present = products.pop();
@@ -213,3 +220,4 @@ public class RealUndoManager {
     }
 
 }
+ */

@@ -15,9 +15,11 @@ import java.time.format.DateTimeFormatter;
 @XmlAccessorType(XmlAccessType.NONE)
 public class Product implements Comparable<Product>, Serializable {
 
-    public Product(){}
+    public Product() {
+    }
+
     public Product(Long id, String name, Coordinates coordinates,
-                   float price, Double manufactureCost, UnitOfMeasure unitOfMeasure, Organization manufacturer){
+                   float price, Double manufactureCost, UnitOfMeasure unitOfMeasure, Organization manufacturer) {
         this.id = id;
         this.coordinates = coordinates;
         this.creationDate = LocalDateTime.now();
@@ -27,33 +29,61 @@ public class Product implements Comparable<Product>, Serializable {
         this.name = name;
         this.manufacturer = manufacturer;
     }
-    public Long getId(){
+
+    public Product(Long id, Coordinates coordinate, LocalDateTime creationDate, float price, double manufactureCost,
+                   UnitOfMeasure unitOfMeasure,
+                   String name, Organization organization, User user) {
+        this.id = id;
+        this.coordinates = coordinate;
+        this.creationDate = creationDate;
+        this.price = price;
+        this.manufactureCost = manufactureCost;
+        this.unitOfMeasure = unitOfMeasure;
+        this.name = name;
+        this.user = user;
+        this.manufacturer = organization;
+    }
+
+    public Long getId() {
         return id;
     }
-    public void setId(Long id){
+
+    public User getUser(){
+        return this.user;
+    }
+
+    public void setId(Long id) {
         this.id = id;
     }
-    public String getName(){
+
+    public String getName() {
         return name;
     }
-    public Coordinates getCoordinates(){
+
+    public Coordinates getCoordinates() {
         return coordinates;
     }
-    public LocalDateTime getCreationDate(){
+
+    public LocalDateTime getCreationDate() {
         return creationDate;
     }
-    public float getPrice(){
+
+    public float getPrice() {
         return price;
     }
-    public Double getManufactureCost(){
+
+    public Double getManufactureCost() {
         return manufactureCost;
     }
-    public UnitOfMeasure getUnitOfMeasure(){
+
+    public UnitOfMeasure getUnitOfMeasure() {
         return unitOfMeasure;
     }
-    public Organization getManufacturer(){
+
+    public Organization getManufacturer() {
         return manufacturer;
     }
+
     @XmlElement
     private Long id; //Поле не может быть null, Значение поля должно быть больше 0, Значение этого поля должно быть уникальным, Значение этого поля должно генерироваться автоматически
     @XmlElement
@@ -71,28 +101,30 @@ public class Product implements Comparable<Product>, Serializable {
     private UnitOfMeasure unitOfMeasure; //Поле может быть null
     @XmlElement
     private Organization manufacturer; //Поле может быть null
+    @XmlElement
+    private User user;
 
     @Override
     public int compareTo(Product prod) {
-        return (int)(prod.getId() - getId());
+        return (int) (prod.getId() - getId());
     }
 
     @Override
-    public String toString(){
+    public String toString() {
         var output = "id: " + id + "\n" +
-        "name: " + name + "\n" +
-        "coordinates:\n" +
-        " ".repeat(2) + "X: " + coordinates.getX() + "\n" +
-         " ".repeat(2) + "Y: " + coordinates.getY() + "\n" +
-        "creation date: " + creationDate.format(DateTimeFormatter.ofPattern("dd/MM/YYYY HH:mm")) + "\n" +
+                "name: " + name + "\n" +
+                "coordinates:\n" +
+                " ".repeat(2) + "X: " + coordinates.getX() + "\n" +
+                " ".repeat(2) + "Y: " + coordinates.getY() + "\n" +
+                "creation date: " + creationDate.format(DateTimeFormatter.ofPattern("dd/MM/YYYY HH:mm")) + "\n" +
                 "price: " + price + "\n" + "manufacture cost: " + manufactureCost;
 
-        if(unitOfMeasure != null){
+        if (unitOfMeasure != null) {
             output += "\n" + "unit of measure: " + unitOfMeasure.toString();
         }
-        if(manufacturer != null){
+        if (manufacturer != null) {
             output += "\n" + "organization: " + "\n" +
-            " ".repeat(2) + "id: " + manufacturer.getId() + "\n" +
+                    " ".repeat(2) + "id: " + manufacturer.getId() + "\n" +
                     " ".repeat(2) + "name: " + manufacturer.getName() + "\n" +
                     " ".repeat(2) + "annual turnover: " + manufacturer.getAnnualTurnover() + "\n" +
                     " ".repeat(2) + "organization type: " + manufacturer.getOrganizationType().toString();
