@@ -1,5 +1,7 @@
 package src.models;
 
+import java.io.Serial;
+
 public class User {
     private int id;
     private String password;

@@ -17,7 +17,7 @@ import java.util.concurrent.ExecutorService;
 public interface CommandManagerCustom {
     /** executes given command */
     void executeCommand(Request userInput);
-    LinkedList<Product> getProducts();
+    List<Product> getProducts();
     /** executes given command */
     void executeCommand(String userInput);
     /** gets the history of executed src.commands */
@@ -34,6 +34,7 @@ public interface CommandManagerCustom {
     ExecutorService getExecutorService();
     InputService getInputService();
     LocalDateTime getInitializationTime();
+    List<User> getUsers();
     DbCollectionManager<Product> getDbProductManager();
     DbCollectionManager<User> getDbUserManager();
 

@@ -17,8 +17,6 @@ public class Main {
         try {
             SettingsContainer.loadSettings("settings.json");
             var settings = SettingsContainer.getSettings();
-            var loader = new XmlFileHandler();
-            var collection = new CollectionManager(loader);
             var commandManager = new CommandManager(new SerializationManager());
             var receivingManager = new ReceivingManager(new ReentrantLock());
             server = new TCPServer(settings.localPort, receivingManager, commandManager);

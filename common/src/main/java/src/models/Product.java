@@ -7,6 +7,7 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -14,7 +15,8 @@ import java.time.format.DateTimeFormatter;
 @XmlRootElement(name = "product")
 @XmlAccessorType(XmlAccessType.NONE)
 public class Product implements Comparable<Product>, Serializable {
-
+    @Serial
+    private static final long serialVersionUID = 1234567L;
     public Product() {
     }
 
@@ -84,6 +86,9 @@ public class Product implements Comparable<Product>, Serializable {
         return manufacturer;
     }
 
+    public void setUser(User user){
+        this.user = user;
+    }
     @XmlElement
     private Long id; //Поле не может быть null, Значение поля должно быть больше 0, Значение этого поля должно быть уникальным, Значение этого поля должно генерироваться автоматически
     @XmlElement

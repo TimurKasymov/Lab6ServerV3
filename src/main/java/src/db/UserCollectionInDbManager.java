@@ -5,13 +5,14 @@ import src.db.DI.DbCollectionManager;
 import src.loggerUtils.LoggerManager;
 import src.models.User;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
 public class UserCollectionInDbManager extends DbCollectionBase implements DbCollectionManager<User> {
     private final Logger logger;
 
-    public UserCollectionInDbManager(ConnectionContainer dbConnection, Logger logger) {
+    public UserCollectionInDbManager() {
         super("users", "create table users(\n" +
                 "\tid serial primary key,\n" +
                 "\tpassword text,\n" +
@@ -21,26 +22,38 @@ public class UserCollectionInDbManager extends DbCollectionBase implements DbCol
     }
 
     public boolean insert(User user) {
-        try (var stUser = ConnectionContainer.getConnection().prepareStatement(insertUser)) {
-            stUser.setInt(1, user.getId());
-            stUser.setString(2, user.getPassword());
-            stUser.setString(3, user.getName());
-            stUser.executeUpdate();
-            return true;
-        } catch (Exception e) {
+        try{
+            var connection =  ConnectionContainer.getConnection();
+            try (var stUser = connection.prepareStatement(insertUser)) {
+                stUser.setInt(1, user.getId());
+                stUser.setString(2, user.getPassword());
+                stUser.setString(3, user.getName());
+                stUser.executeUpdate();
+                return true;
+            } catch (Exception e) {
+                logger.error(e.getMessage());
+            }
+        }
+        catch (SQLException e){
             logger.error(e.getMessage());
         }
         return false;
     }
 
     public boolean update(User user) {
-        try (var stUser = ConnectionContainer.getConnection().prepareStatement(updateUser)) {
-            stUser.setString(1, user.getPassword());
-            stUser.setString(2, user.getName());
-            stUser.setInt(3, user.getId());
-            stUser.executeUpdate();
-            return true;
-        } catch (Exception e) {
+        try{
+            var connection = ConnectionContainer.getConnection();
+            try (var stUser = connection.prepareStatement(updateUser)) {
+                stUser.setString(1, user.getPassword());
+                stUser.setString(2, user.getName());
+                stUser.setInt(3, user.getId());
+                stUser.executeUpdate();
+                return true;
+            } catch (Exception e) {
+                logger.error(e.getMessage());
+            }
+        }
+        catch (SQLException e){
             logger.error(e.getMessage());
         }
         return false;
@@ -72,7 +85,7 @@ public class UserCollectionInDbManager extends DbCollectionBase implements DbCol
         catch (SQLException e) {
             logger.error(e.getMessage());
         }
-        return result;
+        return Collections.synchronizedList(result);
     }
 
     private String insertUser = "insert into Users values(?, ?, ?)";

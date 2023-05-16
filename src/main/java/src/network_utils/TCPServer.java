@@ -8,10 +8,7 @@ import src.network.Request;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.*;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
@@ -22,7 +19,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class TCPServer {
     private final int port;
-    private HashSet<SocketChannel> sessions;
+    private Set<SocketChannel> sessions;
     private ReceivingManager receivingManager;
     private CommandManagerCustom commandManager;
     private SendingManager sendingManager;
@@ -39,7 +36,7 @@ public class TCPServer {
         this.commandManager = commandManager;
         this.sendingManager = new SendingManager();
         this.serializationManager = new SerializationManager();
-        this.sessions = (HashSet<SocketChannel>)Collections.synchronizedSet(new HashSet<SocketChannel>());
+        this.sessions = Collections.synchronizedSet(new HashSet<SocketChannel>());
         Runtime.getRuntime().addShutdownHook(new Thread(()-> {
             try {
                 System.out.println("closing selector...");
@@ -50,7 +47,7 @@ public class TCPServer {
         }));
     }
 
-    public HashSet<SocketChannel> getSessions() {
+    public Set<SocketChannel> getSessions() {
         return sessions;
     }
 

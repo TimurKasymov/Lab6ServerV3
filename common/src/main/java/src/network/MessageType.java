@@ -18,11 +18,14 @@ public enum MessageType {
     UPDATE_BY_ID(Commands.UPDATE_BY_ID),
     SAVE(Commands.SAVE),
     REMOVE_FIRST(Commands.REMOVE_FIRST),
+
     PRINT_UNIQUE_UNIT_OF_MEASURE(Commands.PRINT_UNIQUE_UNIT_OF_MEASURE),
     FILTER_GREATER_THAN_PRICE(Commands.FILTER_GREATER_THAN_PRICE),
     UNDO_COMMANDS(Commands.UNDO_COMMANDS),
+    SIGNUP(Commands.SIGNAUP),
+    LOGIN(Commands.LOGIN),
     COMMAND_RESULT(null);
-    private final String command;
+    private String command;
 
     private MessageType(String command) {
         this.command = command;

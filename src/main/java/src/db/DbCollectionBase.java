@@ -26,14 +26,14 @@ public class DbCollectionBase {
             var tables = md.getTables("Tables", "public", null, null);
             while (tables.next()) {
                 var tableName = tables.getString(3);
-                if (tableName.equals(tableNameToCheck))
+                if (tableName.equals(tableNameToCheck.toLowerCase()))
                     requiredTableCreated = true;
-                if (tableName.equals(ownTableName))
+                if (tableName.equals(tableHistoryName.toLowerCase()))
                     ownTableCreated = true;
             }
             if (!ownTableCreated) {
                 execute(ownCreatingQuery);
-                var queryToReserveFirstIdForReversedORNotInfo = "insert into " + ownTableName + " values(1, ?)";
+                var queryToReserveFirstIdForReversedORNotInfo = "insert into " + tableHistoryName + " values(1, ?)";
                 try (var st = ConnectionContainer.getConnection().prepareStatement(queryToReserveFirstIdForReversedORNotInfo)) {
                     st.setInt(1, CollectionState.NORMAL.ordinal());
                     st.executeUpdate();
@@ -61,7 +61,7 @@ public class DbCollectionBase {
         try (var st = ConnectionContainer.getConnection().createStatement()) {
             try (var resSet = st.executeQuery(query)) {
                 resSet.next();
-                var lastServerPort = resSet.getInt("serverPort");
+                var lastServerPort = resSet.getInt("data");
                 return lastServerPort == SettingsContainer.getSettings().localPort;
             }
         } catch (Exception e) {
@@ -71,13 +71,17 @@ public class DbCollectionBase {
     }
 
     public void markReversedCollection() {
-        var query = "select from " + ownTableName + " where id = 1";
+        var query = "select from " + tableHistoryName + " where id = 1";
+        var updateQuery = "update " + tableHistoryName + "set data = ? where id = 1";
         try (var st = ConnectionContainer.getConnection().createStatement()) {
             try (var resSet = st.executeQuery(query)) {
                 resSet.next();
                 var reversedOrNot = resSet.getInt("data");
-                //reversedOrNot = (reversedOrNot+1) % 1
-
+                reversedOrNot = (reversedOrNot+1) % 2;
+                try (var stInsert = ConnectionContainer.getConnection().prepareStatement(updateQuery)) {
+                    stInsert.setInt(1, reversedOrNot);
+                    stInsert.executeUpdate();
+                }
             }
         } catch (Exception e) {
             logger.error(e.getMessage());
@@ -97,7 +101,7 @@ public class DbCollectionBase {
         }
     }
 
-    private String ownTableName = "internalDataHistory";
+    protected String tableHistoryName = "internalDataHistory";
     public String ownCreatingQuery = "create table internalDataHistory(\n" +
             "\tid serial primary key,\n" +
             "\tdata int not null\n" +

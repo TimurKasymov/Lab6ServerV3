@@ -11,19 +11,16 @@ import src.network.Request;
 import src.network.Response;
 import src.utils.Argument;
 
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class ExecuteScriptCommand extends CommandBase implements Command {
-    private final LinkedList<String> scriptFilesBeingExecuted;
+    private final List<String> scriptFilesBeingExecuted;
     private int recDepth = -1;
     private Logger logger;
 
     public ExecuteScriptCommand(CommandManagerCustom commandManager) {
         super(commandManager);
-        scriptFilesBeingExecuted = (LinkedList<String>)Collections.synchronizedCollection(new LinkedList<String>());
+        scriptFilesBeingExecuted = Collections.synchronizedList(new LinkedList<String>());
         logger = LoggerManager.getLogger(ExecuteScriptCommand.class);
         arguments = new LinkedList<>();
         arguments.add(ImmutablePair.of(Argument.SCRIPT_HASH_MAP, 1));

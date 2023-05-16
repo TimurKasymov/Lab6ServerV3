@@ -4,12 +4,15 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
+import java.io.Serial;
 import java.io.Serializable;
 
 @XmlType(name = "organization")
 @XmlRootElement()
 @XmlAccessorType(XmlAccessType.FIELD)
 public class Organization implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1234567L;
 
     public Organization(){}
     public Organization(Long id, String name, Integer annualTurnover, OrganizationType organizationType){
@@ -48,4 +51,5 @@ public class Organization implements Serializable {
     public OrganizationType getOrganizationType(){
         return type;
     }
+
 }

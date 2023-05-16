@@ -12,6 +12,7 @@ import src.exceptions.InterruptionCause;
 import src.interfaces.Command;
 import src.interfaces.CommandManagerCustom;
 import src.network.Response;
+import src.service.HashingService;
 import src.service.ValidatorService;
 import src.utils.Argument;
 
@@ -102,6 +103,39 @@ public class AddCommand extends CommandBase implements Command {
             }
             var id = products.size() == 0 ? 1 : maxId + 1;
             product.setId(id);
+            var user = product.getUser();
+            var hashService = new HashingService();
+            var foundUser = commandManager.getUsers()
+                    .stream()
+                    .filter(u-> u.getPassword()
+                            .equals(hashService.hash(request.userPassword))
+                             && u.getName().equals(request.userName))
+                    .findFirst();
+            if(foundUser.isPresent())
+                product.setUser(foundUser.get());
+            var maxOrgId = Long.MIN_VALUE;
+            var maxCoorId = Integer.MIN_VALUE;
+            if(product.getManufacturer() != null || product.getCoordinates() != null){
+                lock.lock();
+                try {
+                    for (var prod : products) {
+                        if(prod.getManufacturer() != null)
+                            maxOrgId = Long.max(maxOrgId, prod.getManufacturer().getId());
+                        if(prod.getCoordinates() != null)
+                            maxCoorId = Integer.max(maxCoorId, prod.getCoordinates().getId());
+                    }
+                }
+                finally {
+                    lock.unlock();
+                }
+            }
+            maxCoorId = maxCoorId == Integer.MIN_VALUE ? 1 : maxCoorId + 1;
+            maxOrgId = maxOrgId == Long.MIN_VALUE ? 1 : maxOrgId + 1;
+
+            if(product.getCoordinates() != null)
+                product.getCoordinates().setId(maxCoorId);
+            if(product.getManufacturer() != null)
+                product.getManufacturer().setId(maxOrgId);
 
             if(!ValidatorService.validateProduct(product))
             {
@@ -116,10 +150,10 @@ public class AddCommand extends CommandBase implements Command {
                 if (products.size() == 0) {
                     products.add(product);
                     var resp = new Response("product with id " + id + " added");
-                } else if (products.peekLast().getId() == maxId)
+                } else if (products.get(products.size()-1).getId() == maxId)
                     products.add(product);
                 else
-                    products.addFirst(product);
+                    products.add(0, product);
                 var response = new Response("product with id " + id + " added");
                 sendToClient(response, request);
                 return true;

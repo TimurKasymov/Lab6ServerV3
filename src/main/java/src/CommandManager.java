@@ -4,6 +4,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import src.container.SettingsContainer;
 import src.converters.SerializationManager;
 import src.db.DI.DbCollectionManager;
+import src.db.ProductCollectionInDbManager;
+import src.db.UserCollectionInDbManager;
 import src.models.Product;
 import src.commands.*;
 import src.commands.AddCommand;
@@ -16,6 +18,8 @@ import src.network.MessageType;
 import src.network.Request;
 import src.network.Response;
 import src.network_utils.SendingManager;
+import src.service.AuthenticationManager;
+import src.service.HashingService;
 import src.service.InputService;
 import src.utils.Argument;
 
@@ -32,27 +36,30 @@ public class CommandManager implements CommandManagerCustom {
     private DbCollectionManager<Product> productDbCollectionManager;
     private DbCollectionManager<User> userDbCollectionManager;
     private List<Product> products;
-    private InputService inputService;
+    private final InputService inputService;
     private List<User> users;
     private String currentScriptBeingExecuted;
     private HashMap<String, List<String>> executeScriptHandyMap;
     private Scanner scanner;
     private final HashMap<String, Command> commandsMap;
     private final SendingManager sendingManager;
-    private final LinkedList<String> commandHistory;
+    private final List<String> commandHistory;
     private final SerializationManager serializationManager;
     private final ExecutorService executorService;
     private final Lock lock;
+    private final HashingService hashingService;
+    private final AuthenticationManager authenticationManager;
     /**
      * Constructor for making a src.src.CommandManager
      *
      */
     public CommandManager(SerializationManager serializationManager) {
+        this.hashingService = new HashingService();
         this.lock = new ReentrantLock();
         this.inputService = new InputService();
         this.serializationManager = serializationManager;
         this.sendingManager = new SendingManager();
-        commandHistory = (LinkedList<String>)Collections.synchronizedCollection(new LinkedList<String>());
+        commandHistory = Collections.synchronizedList(new LinkedList<String>());
         executorService = Executors.newFixedThreadPool(3);
         commandsMap = new HashMap<>();
         commandsMap.put("add", new AddCommand(this));
@@ -69,8 +76,14 @@ public class CommandManager implements CommandManagerCustom {
         commandsMap.put("info", new InfoCommand(this));
         commandsMap.put("execute_script", new ExecuteScriptCommand(this));
         commandsMap.put("filter_by_manufacture_cost", new FilterByManufactureCostCommand(this));
-        commandsMap.put("undo_commands", new UndoCommand(this));
         CommandsContainer.setCommands(commandsMap.keySet().stream().toList());
+        productDbCollectionManager = new ProductCollectionInDbManager();
+        userDbCollectionManager = new UserCollectionInDbManager();
+        productDbCollectionManager.ensureTablesExists();
+        userDbCollectionManager.ensureTablesExists();
+        products = productDbCollectionManager.load();
+        users = userDbCollectionManager.load();
+        this.authenticationManager= new AuthenticationManager(users, userDbCollectionManager);
         /*try {
             this.undoManager = new RealUndoManager(new File("product_logging.xml"), new File("command_logging.txt"), collectionManager);
         } catch (Exception e) {
@@ -101,8 +114,12 @@ public class CommandManager implements CommandManagerCustom {
     }
 
     @Override
-    public LinkedList<Product> getProducts(){
-        return (LinkedList<Product>)this.products;
+    public List<Product> getProducts(){
+        return this.products;
+    }
+    @Override
+    public List<User> getUsers(){
+        return this.users;
     }
     public ExecutorService getExecutorService() {return this.executorService;}
     public void setCurrentScriptBeingExecuted(String name) {
@@ -153,18 +170,6 @@ public class CommandManager implements CommandManagerCustom {
      * @return the execution was successful
      */
     public void executeCommand(Request request) {
-        // if it is the last server that accessed the db then do not reload collection
-        // otherwise reload to get new products inserted by other servers
-        lock.lock();
-        try{
-            if(! productDbCollectionManager.isThisLastServerToTouchDB(SettingsContainer.getSettings().localPort)){
-                productDbCollectionManager.markThatThisServerHasMadeChangesToDb();
-                products = productDbCollectionManager.load();
-                users = userDbCollectionManager.load();
-            }
-        }finally {
-            lock.unlock();
-        }
         // sync
         if (request.messageType == MessageType.ALL_AVAILABLE_COMMANDS) {
             var commandPlsArguments = new HashMap<String, List<Pair<Argument, Integer>>>();
@@ -178,6 +183,57 @@ public class CommandManager implements CommandManagerCustom {
             sendingManager.send(data, request.interlayerChannel, request.clientPort);
             return;
         }
+
+        var wasAuthenticated = authenticationManager
+                .authenticate(request.userName, request.userPassword, request.createNewUser);
+        var sending = false;
+        Response authResponse = null;
+        if(request.messageType == MessageType.SIGNUP){
+            var userMaxId = Integer.MIN_VALUE;
+            for (var user : users) {
+                userMaxId = Integer.max(userMaxId, user.getId());
+            }
+            var userId = products.size() == 0 ? 1 : userMaxId + 1;
+            var user = new User(userId, hashingService.hash(request.userPassword), request.userName);
+            users.add(user);
+            userDbCollectionManager.insert(user);
+            authResponse = new Response("You are signed up");
+            sending = true;
+        }
+        else if(request.messageType == MessageType.LOGIN){
+            if(wasAuthenticated)
+                authResponse = new Response("you are logged in");
+            else
+                authResponse = new Response("password or user name do not match, try again");
+            sending = true;
+        }
+        else{
+            if(!wasAuthenticated)
+            {
+                authResponse = new Response("the credentials you are trying to log in with " +
+                        "are not correct, try again");
+                sending = true;
+            }
+        }
+        if(sending){
+            var data = serializationManager.serialize(authResponse);
+            sendingManager.send(data, request.interlayerChannel, request.clientPort);
+            return;
+        }
+
+        // if it is the last server that accessed the db then do not reload collection
+        // otherwise reload to get new products inserted by other servers
+        lock.lock();
+        try{
+            if(! productDbCollectionManager.isThisLastServerToTouchDB(SettingsContainer.getSettings().localPort)){
+                productDbCollectionManager.markThatThisServerHasMadeChangesToDb();
+                products = productDbCollectionManager.load();
+                users = userDbCollectionManager.load();
+            }
+        }finally {
+            lock.unlock();
+        }
+
         // sync
         if (request.messageType == MessageType.LOAD_COLLECTION) {
             //var successfully = collectionManager.load(new File((String) request.requiredArguments.get(0)));

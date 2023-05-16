@@ -11,4 +11,5 @@ public interface DbCollectionManager<TEnt> {
     List<TEnt> load();
     boolean isThisLastServerToTouchDB(int port);
     void markThatThisServerHasMadeChangesToDb();
+    void markReversedCollection();
 }

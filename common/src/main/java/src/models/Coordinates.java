@@ -3,11 +3,14 @@ package src.models;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
+import java.io.Serial;
 import java.io.Serializable;
 
 @XmlType(name = "coordinates")
 @XmlRootElement()
 public class Coordinates implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1234567L;
     @XmlElement
     private int id; //Поле не может быть null
     @XmlElement
@@ -38,6 +41,10 @@ public class Coordinates implements Serializable {
     public int getId(){
         return id;
     }
+    public void setId(int id){
+        this.id = id;
+    }
+
     public Double getX() {
         return x;
     }

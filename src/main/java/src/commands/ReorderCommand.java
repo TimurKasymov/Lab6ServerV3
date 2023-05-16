@@ -27,6 +27,7 @@ public class ReorderCommand extends CommandBase implements Command {
     public boolean execute(Request request) {
         var resp = new Response();
         Collections.reverse(commandManager.getProducts());
+        commandManager.getDbProductManager().markReversedCollection();
         //commandManager
         //        .getUndoManager()
         //        .logReorderCommand();

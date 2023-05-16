@@ -8,16 +8,13 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import com.google.common.primitives.Bytes;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class ReceivingManager {
 
-    private HashSet<SocketChannel> sessions = new HashSet<>();
+    private Set<SocketChannel> sessions;
     private final HashMap<Integer, byte[]> receivedData;
     private final Lock lock;
 
@@ -26,7 +23,7 @@ public class ReceivingManager {
         this.lock = lock;
     }
 
-    public void setSessions(HashSet<SocketChannel> sessions){
+    public void setSessions(Set<SocketChannel> sessions){
         this.sessions = sessions;
     }
     public void read(SelectionKey key, ReceivedRequestHandlerFuncInterface methodToCallOnRequestBeingDoneTransferring) {
@@ -61,12 +58,13 @@ public class ReceivingManager {
                 }
                 else{
                     var arr = receivedData.get(comingFromClientPort);
-                    arr = Bytes.concat(arr, Arrays.copyOf(byteBuffer.array(), byteBuffer.array().length - 6));
+                    receivedData.put(comingFromClientPort, Bytes.concat(arr, Arrays.copyOf(byteBuffer.array(), byteBuffer.array().length - 6)));
                 }
+                // четко
                 // reached the end of the object being sent
                 if(byteBuffer.array()[numRead-1] == 1){
-                    receivedData.remove(comingFromClientPort);
                     var readResults = new ReadResults(channel, receivedData.get(comingFromClientPort), comingFromClientPort);
+                    receivedData.remove(comingFromClientPort);
                     methodToCallOnRequestBeingDoneTransferring.receivedRequestHandler(readResults);
                     return;
                 }

@@ -21,6 +21,9 @@ public class ConnectionContainer {
         config.setPassword(SettingsContainer.getSettings().dbPsw);
         config.addDataSourceProperty("cachePrepStmts", "true");
         config.addDataSourceProperty("prepStmtCacheSize", "250");
+        config.setMaximumPoolSize(50);
+        config.setMinimumIdle(5);
+        config.setConnectionTimeout(10000);
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
         ds = new HikariDataSource(config);
     }
