@@ -1,9 +1,10 @@
 package src.commands;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
+import src.db.SeqNames;
 import src.loggerUtils.LoggerManager;
 import src.models.Product;
+import src.models.User;
 import src.network.MessageType;
 import src.network.Request;
 import org.slf4j.Logger;
@@ -12,14 +13,12 @@ import src.exceptions.InterruptionCause;
 import src.interfaces.Command;
 import src.interfaces.CommandManagerCustom;
 import src.network.Response;
+import src.models.Role;
 import src.service.HashingService;
 import src.service.ValidatorService;
 import src.utils.Argument;
 
-import java.util.InputMismatchException;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.NoSuchElementException;
+import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -28,8 +27,9 @@ public class AddCommand extends CommandBase implements Command {
 
     private final Logger logger;
     private Lock lock = new ReentrantLock();
+
     public AddCommand(CommandManagerCustom commandManager) {
-        super(commandManager);
+        super(commandManager, List.of(Role.MIDDLE_USER));
         logger = LoggerManager.getLogger(AddCommand.class);
         arguments = new LinkedList<>();
         arguments.add(ImmutablePair.of(Argument.PRODUCT, 1));
@@ -37,21 +37,23 @@ public class AddCommand extends CommandBase implements Command {
 
     @Override
     public boolean execute(String[] args) {
-        return execute(new Request(MessageType.ADD));
+        var request = new Request(MessageType.ADD);
+        request.userName = args[0];
+        request.userPassword = args[1];
+        return execute(request);
     }
 
     private Product fillInProduct() throws CommandInterruptionException {
         var inputService = commandManager.getInputService();
         var maxId = Long.MIN_VALUE;
-        var products = commandManager.getProducts();
+        var products = commandManager.getProductsRepo().getProducts();
 
         lock.lock();
         try {
             for (var product : products) {
                 maxId = Long.max(maxId, product.getId());
             }
-        }
-        finally {
+        } finally {
             lock.unlock();
         }
 
@@ -88,57 +90,31 @@ public class AddCommand extends CommandBase implements Command {
                 // fill in the product from script
                 product = fillInProduct();
             }
-            product = (Product)request.requiredArguments.get(0);
+            else
+                product = (Product) request.requiredArguments.get(0);
 
-            var maxId = Long.MIN_VALUE;
-            var products = commandManager.getProducts();
+            product.setId(commandManager.getDbProductManager().getNextId(SeqNames.productSeq).longValue());
+            Optional<User> foundUser;
             lock.lock();
             try {
-                for (var prod : products) {
-                    maxId = Long.max(maxId, prod.getId());
-                }
-            }
-            finally {
+                var hashService = new HashingService();
+                foundUser = commandManager.getUsersRepo().getUsers()
+                        .stream()
+                        .filter(u -> u.getPassword()
+                                .equals(hashService.hash(request.userPassword))
+                                && u.getName().equals(request.userName))
+                        .findFirst();
+            } finally {
                 lock.unlock();
             }
-            var id = products.size() == 0 ? 1 : maxId + 1;
-            product.setId(id);
-            var user = product.getUser();
-            var hashService = new HashingService();
-            var foundUser = commandManager.getUsers()
-                    .stream()
-                    .filter(u-> u.getPassword()
-                            .equals(hashService.hash(request.userPassword))
-                             && u.getName().equals(request.userName))
-                    .findFirst();
-            if(foundUser.isPresent())
-                product.setUser(foundUser.get());
-            var maxOrgId = Long.MIN_VALUE;
-            var maxCoorId = Integer.MIN_VALUE;
-            if(product.getManufacturer() != null || product.getCoordinates() != null){
-                lock.lock();
-                try {
-                    for (var prod : products) {
-                        if(prod.getManufacturer() != null)
-                            maxOrgId = Long.max(maxOrgId, prod.getManufacturer().getId());
-                        if(prod.getCoordinates() != null)
-                            maxCoorId = Integer.max(maxCoorId, prod.getCoordinates().getId());
-                    }
-                }
-                finally {
-                    lock.unlock();
-                }
-            }
-            maxCoorId = maxCoorId == Integer.MIN_VALUE ? 1 : maxCoorId + 1;
-            maxOrgId = maxOrgId == Long.MIN_VALUE ? 1 : maxOrgId + 1;
+            foundUser.ifPresent(product::setUser);
 
-            if(product.getCoordinates() != null)
-                product.getCoordinates().setId(maxCoorId);
-            if(product.getManufacturer() != null)
-                product.getManufacturer().setId(maxOrgId);
+            if (product.getCoordinates() != null)
+                product.getCoordinates().setId(commandManager.getDbProductManager().getNextId(SeqNames.coordSeq));
+            if (product.getManufacturer() != null)
+                product.getManufacturer().setId(commandManager.getDbProductManager().getNextId(SeqNames.orgSeq).longValue());
 
-            if(!ValidatorService.validateProduct(product))
-            {
+            if (!ValidatorService.validateProduct(product)) {
                 var resp = new Response("product has not met validation criteria");
                 sendToClient(resp, request);
                 return true;
@@ -146,19 +122,24 @@ public class AddCommand extends CommandBase implements Command {
             //commandManager.getUndoManager().logAddCommand(id);
             lock.lock();
             try {
+                var products = commandManager.getProductsRepo().getProducts();
+                var maxId = Long.MIN_VALUE;
+                for (var prod : products) {
+                    maxId = Long.max(maxId, prod.getId());
+                }
+
                 commandManager.getDbProductManager().insert(product);
                 if (products.size() == 0) {
                     products.add(product);
-                    var resp = new Response("product with id " + id + " added");
-                } else if (products.get(products.size()-1).getId() == maxId)
+                    var resp = new Response("product with id " + product.getId() + " added");
+                } else if (products.get(products.size() - 1).getId() == maxId)
                     products.add(product);
                 else
                     products.add(0, product);
-                var response = new Response("product with id " + id + " added");
+                var response = new Response("product with id " + product.getId() + " added");
                 sendToClient(response, request);
                 return true;
-            }
-            finally {
+            } finally {
                 lock.unlock();
             }
         } catch (NoSuchElementException exception) {

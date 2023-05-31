@@ -13,5 +13,8 @@ public class SettingsModel {
     public String dbUser;
     @JsonProperty("db_psw")
     public String dbPsw;
-
+    @JsonProperty("package_bytes_size")
+    public Integer packageSize;
+    @JsonProperty("host")
+    public String host;
 }

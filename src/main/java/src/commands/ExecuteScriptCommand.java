@@ -1,7 +1,6 @@
 package src.commands;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.Pair;
 import src.loggerUtils.LoggerManager;
 import org.slf4j.Logger;
 import src.interfaces.Command;
@@ -9,8 +8,10 @@ import src.interfaces.CommandManagerCustom;
 import src.network.MessageType;
 import src.network.Request;
 import src.network.Response;
+import src.models.Role;
 import src.utils.Argument;
 
+import java.nio.file.Path;
 import java.util.*;
 
 public class ExecuteScriptCommand extends CommandBase implements Command {
@@ -19,7 +20,7 @@ public class ExecuteScriptCommand extends CommandBase implements Command {
     private Logger logger;
 
     public ExecuteScriptCommand(CommandManagerCustom commandManager) {
-        super(commandManager);
+        super(commandManager, List.of(Role.MIDDLE_USER, Role.MIN_USER));
         scriptFilesBeingExecuted = Collections.synchronizedList(new LinkedList<String>());
         logger = LoggerManager.getLogger(ExecuteScriptCommand.class);
         arguments = new LinkedList<>();
@@ -64,7 +65,7 @@ public class ExecuteScriptCommand extends CommandBase implements Command {
             String command;
             commandManager.getInputService().setIterator(reader);
             while (reader.hasNext() && (command = reader.next()) != null) {
-                commandManager.executeCommand(command);
+                commandManager.executeCommand(command  + " " + request.userName + " " + request.userPassword);
                 commandManager.getInputService().setIterator(reader);
             }
             logger.info("Commands ended.");

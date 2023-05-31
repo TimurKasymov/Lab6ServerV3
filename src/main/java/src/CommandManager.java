@@ -1,27 +1,32 @@
 package src;
 
 import org.apache.commons.lang3.tuple.Pair;
+import src.Repositories.DI.ProductRepo;
+import src.Repositories.DI.UserRepo;
 import src.container.SettingsContainer;
 import src.converters.SerializationManager;
 import src.db.DI.DbCollectionManager;
 import src.db.ProductCollectionInDbManager;
+import src.db.SeqNames;
+import src.db.TableManager;
 import src.db.UserCollectionInDbManager;
 import src.models.Product;
 import src.commands.*;
 import src.commands.AddCommand;
 import src.container.CommandsContainer;
 import src.interfaces.*;
-import src.interfaces.CollectionCustom;
 import src.interfaces.Command;
+import src.models.Role;
 import src.models.User;
 import src.network.MessageType;
 import src.network.Request;
 import src.network.Response;
 import src.network_utils.SendingManager;
-import src.service.AuthenticationManager;
+import src.service.Auth.AuthenticationManager;
 import src.service.HashingService;
 import src.service.InputService;
 import src.utils.Argument;
+import src.utils.Commands;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -35,9 +40,7 @@ public class CommandManager implements CommandManagerCustom {
     public LocalDateTime initializationTime = LocalDateTime.now();
     private DbCollectionManager<Product> productDbCollectionManager;
     private DbCollectionManager<User> userDbCollectionManager;
-    private List<Product> products;
     private final InputService inputService;
-    private List<User> users;
     private String currentScriptBeingExecuted;
     private HashMap<String, List<String>> executeScriptHandyMap;
     private Scanner scanner;
@@ -47,11 +50,15 @@ public class CommandManager implements CommandManagerCustom {
     private final SerializationManager serializationManager;
     private final ExecutorService executorService;
     private final Lock lock;
+    private UserRepo userRepo;
+
+    private ProductRepo prodRepo;
+
     private final HashingService hashingService;
     private final AuthenticationManager authenticationManager;
+
     /**
      * Constructor for making a src.src.CommandManager
-     *
      */
     public CommandManager(SerializationManager serializationManager) {
         this.hashingService = new HashingService();
@@ -62,45 +69,45 @@ public class CommandManager implements CommandManagerCustom {
         commandHistory = Collections.synchronizedList(new LinkedList<String>());
         executorService = Executors.newFixedThreadPool(3);
         commandsMap = new HashMap<>();
-        commandsMap.put("add", new AddCommand(this));
-        commandsMap.put("clear", new ClearCommand(this));
-        commandsMap.put("filter_greater_than_price", new FilterGreaterThanPriceCommand(this));
-        commandsMap.put("print_unique_unit_of_measure", new PrintUniqueUnitOfMeasureCommand(this));
-        commandsMap.put("remove_by_id", new RemoveByIdCommand(this));
-        commandsMap.put("remove_first", new RemoveFirstCommand(this));
-        commandsMap.put("reorder", new ReorderCommand(this));
-        commandsMap.put("show", new ShowCommand(this));
-        commandsMap.put("update_by_id", new UpdateByIdCommand(this));
-        commandsMap.put("history", new HistoryCommand(this));
-        commandsMap.put("help", new HelpCommand(this));
-        commandsMap.put("info", new InfoCommand(this));
-        commandsMap.put("execute_script", new ExecuteScriptCommand(this));
-        commandsMap.put("filter_by_manufacture_cost", new FilterByManufactureCostCommand(this));
+        commandsMap.put(Commands.ADD, new AddCommand(this));
+        commandsMap.put(Commands.CLEAR, new ClearCommand(this));
+        commandsMap.put(Commands.FILTER_GREATER_THAN_PRICE, new FilterGreaterThanPriceCommand(this));
+        commandsMap.put(Commands.PRINT_UNIQUE_UNIT_OF_MEASURE, new PrintUniqueUnitOfMeasureCommand(this));
+        commandsMap.put(Commands.REMOVE_BY_ID, new RemoveByIdCommand(this));
+        commandsMap.put(Commands.REMOVE_FIRST, new RemoveFirstCommand(this));
+        commandsMap.put(Commands.REORDER, new ReorderCommand(this));
+        commandsMap.put(Commands.SHOW, new ShowCommand(this));
+        commandsMap.put(Commands.UPDATE_BY_ID, new UpdateByIdCommand(this));
+        commandsMap.put(Commands.HISTORY, new HistoryCommand(this));
+        commandsMap.put(Commands.HELP, new HelpCommand(this));
+        commandsMap.put(Commands.INFO, new InfoCommand(this));
+        commandsMap.put(Commands.EXECUTE_SCRIPT, new ExecuteScriptCommand(this));
+        commandsMap.put(Commands.FILTER_BY_MANUFACTURE_COST, new FilterByManufactureCostCommand(this));
+        commandsMap.put(Commands.SHOW_USERS, new ShowUsersCommand(this));
+        commandsMap.put(Commands.ASSIGN_ROLE, new AssignRoleCommand(this));
+
         CommandsContainer.setCommands(commandsMap.keySet().stream().toList());
         productDbCollectionManager = new ProductCollectionInDbManager();
         userDbCollectionManager = new UserCollectionInDbManager();
-        productDbCollectionManager.ensureTablesExists();
-        userDbCollectionManager.ensureTablesExists();
-        products = productDbCollectionManager.load();
-        users = userDbCollectionManager.load();
-        this.authenticationManager= new AuthenticationManager(users, userDbCollectionManager);
-        /*try {
-            this.undoManager = new RealUndoManager(new File("product_logging.xml"), new File("command_logging.txt"), collectionManager);
-        } catch (Exception e) {
-            LoggerManager.getLogger(CommandManager.class).error("fatal error, logging files can not be created or opened");
-            System.exit(0);
-        }
-         */
+        TableManager.ensureTablesExist();
+        prodRepo = new src.Repositories.ProductRepo(productDbCollectionManager.load());
+        userRepo = new src.Repositories.UserRepo(userDbCollectionManager.load());
+        this.authenticationManager = new AuthenticationManager(userRepo.getUsers(), userDbCollectionManager);
     }
 
     @Override
-    public InputService getInputService(){
+    public InputService getInputService() {
         return inputService;
     }
 
     @Override
     public LocalDateTime getInitializationTime() {
         return initializationTime;
+    }
+
+    @Override
+    public UserRepo getUsersRepo() {
+        return userRepo;
     }
 
     @Override
@@ -113,15 +120,10 @@ public class CommandManager implements CommandManagerCustom {
         return userDbCollectionManager;
     }
 
-    @Override
-    public List<Product> getProducts(){
-        return this.products;
+    public ExecutorService getExecutorService() {
+        return this.executorService;
     }
-    @Override
-    public List<User> getUsers(){
-        return this.users;
-    }
-    public ExecutorService getExecutorService() {return this.executorService;}
+
     public void setCurrentScriptBeingExecuted(String name) {
         this.currentScriptBeingExecuted = name;
     }
@@ -153,7 +155,7 @@ public class CommandManager implements CommandManagerCustom {
 
     // sync
     public void executeCommand(String userInput) {
-        var commandUnits = userInput.trim().toLowerCase().split(" ", 2);
+        var commandUnits = userInput.trim().toLowerCase().split(" ");
         if (!commandsMap.containsKey(commandUnits[0])) {
             return;
         }
@@ -188,34 +190,32 @@ public class CommandManager implements CommandManagerCustom {
                 .authenticate(request.userName, request.userPassword, request.createNewUser);
         var sending = false;
         Response authResponse = null;
-        if(request.messageType == MessageType.SIGNUP){
-            var userMaxId = Integer.MIN_VALUE;
-            for (var user : users) {
-                userMaxId = Integer.max(userMaxId, user.getId());
-            }
-            var userId = products.size() == 0 ? 1 : userMaxId + 1;
-            var user = new User(userId, hashingService.hash(request.userPassword), request.userName);
-            users.add(user);
+        if (request.messageType == MessageType.SIGNUP) {
+            var id = userDbCollectionManager.getNextId(SeqNames.userSeq);
+            var user = new User(id, hashingService.hash(request.userPassword), request.userName);
+            user.role = Role.MIN_USER;
+            userRepo.getUsers().add(user);
             userDbCollectionManager.insert(user);
             authResponse = new Response("You are signed up");
             sending = true;
-        }
-        else if(request.messageType == MessageType.LOGIN){
-            if(wasAuthenticated)
+        } else if (request.messageType == MessageType.LOGIN) {
+            if (wasAuthenticated)
                 authResponse = new Response("you are logged in");
             else
                 authResponse = new Response("password or user name do not match, try again");
             sending = true;
-        }
-        else{
-            if(!wasAuthenticated)
-            {
+        } else {
+            if (!wasAuthenticated) {
                 authResponse = new Response("the credentials you are trying to log in with " +
                         "are not correct, try again");
                 sending = true;
             }
         }
-        if(sending){
+        if (sending) {
+            if(wasAuthenticated)
+                authResponse.messageType = MessageType.LOGGED;
+            else
+                authResponse.messageType = MessageType.LOGGING_FAILED;
             var data = serializationManager.serialize(authResponse);
             sendingManager.send(data, request.interlayerChannel, request.clientPort);
             return;
@@ -224,19 +224,18 @@ public class CommandManager implements CommandManagerCustom {
         // if it is the last server that accessed the db then do not reload collection
         // otherwise reload to get new products inserted by other servers
         lock.lock();
-        try{
-            if(! productDbCollectionManager.isThisLastServerToTouchDB(SettingsContainer.getSettings().localPort)){
+        try {
+            if (!productDbCollectionManager.isThisLastServerToTouchDB(SettingsContainer.getSettings().localPort)) {
                 productDbCollectionManager.markThatThisServerHasMadeChangesToDb();
-                products = productDbCollectionManager.load();
-                users = userDbCollectionManager.load();
+                prodRepo = new src.Repositories.ProductRepo(productDbCollectionManager.load());
+                userRepo = new src.Repositories.UserRepo(userDbCollectionManager.load());
             }
-        }finally {
+        } finally {
             lock.unlock();
         }
 
         // sync
         if (request.messageType == MessageType.LOAD_COLLECTION) {
-            //var successfully = collectionManager.load(new File((String) request.requiredArguments.get(0)));
             var response = new Response("collection was loaded successfully");
             var data = serializationManager.serialize(response);
             sendingManager.send(data, request.interlayerChannel, request.clientPort);
@@ -245,11 +244,24 @@ public class CommandManager implements CommandManagerCustom {
         // sync
         var commandName = request.messageType;
         var command = commandsMap.get(commandName.getCommandDesc());
-        commandHistory.add(commandName.getCommandDesc());
+        var foundUser = userRepo.getUser(request);
+        if (foundUser.isEmpty())
+            return;
+        if (command.isAllowedToExecute(foundUser.get().role))
+            commandHistory.add(commandName.getCommandDesc());
+        else
+        {
+            var response = new Response("you have got no rights honey");
+            var data = serializationManager.serialize(response);
+            sendingManager.send(data, request.interlayerChannel, request.clientPort);
+            return;
+        }
         var result = command.execute(request);
-        // collectionManager.save();
-        //undoManager.saveLoggingFiles();
-        return;
+    }
+
+    @Override
+    public ProductRepo getProductsRepo() {
+        return prodRepo;
     }
 
 
@@ -259,9 +271,13 @@ public class CommandManager implements CommandManagerCustom {
     }
 
     @Override
-    public List<String> getCommandsInfo() {
+    public List<String> getCommandsInfo(Role role) {
         var commandInfos = new ArrayList<String>(commandsMap.size());
-        commandsMap.forEach((key, value) -> commandInfos.add(key + " - " + value.getInfo()));
+        commandsMap.forEach((key, value) -> {
+                    if (value.isAllowedToExecute(role))
+                        commandInfos.add(key + " - " + value.getInfo());
+                }
+        );
         return commandInfos;
     }
 

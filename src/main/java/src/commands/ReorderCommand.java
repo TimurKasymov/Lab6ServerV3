@@ -1,12 +1,12 @@
 package src.commands;
 
-import org.apache.commons.lang3.tuple.Pair;
 import src.interfaces.Command;
 import src.interfaces.CommandManagerCustom;
 import src.network.MessageType;
 import src.network.Request;
 import src.network.Response;
-import src.utils.Argument;
+import src.models.Role;
+
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -14,19 +14,22 @@ import java.util.List;
 public class ReorderCommand extends CommandBase implements Command {
 
     public ReorderCommand(CommandManagerCustom commandManager){
-        super(commandManager);
+        super(commandManager, List.of(Role.MIN_USER));
         arguments = new LinkedList<>();
     }
 
     @Override
     public boolean execute(String[] args) {
-        return execute(new Request(MessageType.REORDER));
+        var request = new Request(MessageType.REORDER);
+        request.userName = args[0];
+        request.userPassword = args[1];
+        return execute(request);
     }
 
     @Override
     public boolean execute(Request request) {
         var resp = new Response();
-        Collections.reverse(commandManager.getProducts());
+        Collections.reverse(commandManager.getProductsRepo().getProducts());
         commandManager.getDbProductManager().markReversedCollection();
         //commandManager
         //        .getUndoManager()

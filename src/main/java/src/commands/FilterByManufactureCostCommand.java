@@ -14,7 +14,7 @@ import java.util.List;
 
 public class FilterByManufactureCostCommand extends CommandBase implements Command {
     public FilterByManufactureCostCommand(CommandManagerCustom commandManager){
-        super(commandManager);
+        super(commandManager, List.of());
         arguments = new LinkedList<>();
         arguments.add(ImmutablePair.of(Argument.COST, 1));
     }
@@ -23,6 +23,8 @@ public class FilterByManufactureCostCommand extends CommandBase implements Comma
     public boolean execute(String[] args) {
         var cost = Double.parseDouble(args[0]);
         var request = new Request(MessageType.FILTER_BY_MANUFACTURE_COST);
+        request.userName = args[1];
+        request.userPassword = args[2];
         request.requiredArguments.add(cost);
         return execute(request);
     }
@@ -33,7 +35,7 @@ public class FilterByManufactureCostCommand extends CommandBase implements Comma
         try {
             response = new Response(null);
             var manufactureCost = (Double) request.requiredArguments.get(0);
-            var products = commandManager.getProducts();
+            var products = commandManager.getProductsRepo().getProducts();
             for (Product product : products) {
                 if(product.getManufactureCost().doubleValue() == manufactureCost)
                     response.serverResponseToCommand += product.toString() + "\n\n";

@@ -4,7 +4,6 @@ import java.sql.SQLException;
 import java.util.List;
 
 public interface DbCollectionManager<TEnt> {
-    void ensureTablesExists();
     boolean insert(TEnt entity);
     boolean update(TEnt entity);
     boolean delete(TEnt id);
@@ -12,4 +11,5 @@ public interface DbCollectionManager<TEnt> {
     boolean isThisLastServerToTouchDB(int port);
     void markThatThisServerHasMadeChangesToDb();
     void markReversedCollection();
+    Integer getNextId(String seqName);
 }

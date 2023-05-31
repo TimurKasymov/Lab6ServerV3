@@ -5,7 +5,9 @@ import src.db.DI.DbCollectionManager;
 import src.models.*;
 
 import java.sql.SQLException;
+import java.sql.SQLType;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
@@ -13,40 +15,18 @@ import java.util.List;
 public class ProductCollectionInDbManager extends DbCollectionBase implements DbCollectionManager<Product> {
 
     public ProductCollectionInDbManager() {
-        super("Coordinates", "create table if not exists Coordinates(\n" +
-                "\tid int primary key,\n" +
-                "\tx double precision not null,\n" +
-                "\ty float\n" +
-                ");\n" +
-                "\n" +
-                "create table if not exists Organizations(\n" +
-                "\tid int primary key,\n" +
-                "\tname text not null,\n" +
-                "\tannualTurnover bigint not null,\n" +
-                "\torganizationType int not null\n" +
-                ");\n" +
-                "\n" +
-                "create table if not exists Products(\n" +
-                "\tid int primary key,\n" +
-                "\tname text not null,\n" +
-                "\tcoordinates int references Coordinates(id),\n" +
-                "\tcreationDate timestamp not null,\n" +
-                "\tprice float not null check (price > 0),\n" +
-                "\tmanufactureCost double precision not null,\n" +
-                "\tunitOfMeasure int not null,\n" +
-                "\torganization int references Organizations(id),\n" +
-                "\tuserId int references users(id)" +
-                ");");
     }
 
     @Override
     public boolean insert(Product product) {
         try {
             var connection = ConnectionContainer.getConnection();
+
             String insertIntoCoordinates = "insert into Coordinates values(?, ?, ?)";
             String insertIntoOrganizations = "insert into Organizations values(?, ?, ?, ?)";
             String insertIntoProducts = "insert into Products" +
                     " values(?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
             try (var stCoor = connection.prepareStatement(insertIntoCoordinates);
                  var stOrg = connection.prepareStatement(insertIntoOrganizations);
                  var stProd = connection.prepareStatement(insertIntoProducts)) {
@@ -54,12 +34,14 @@ public class ProductCollectionInDbManager extends DbCollectionBase implements Db
                 stCoor.setDouble(2, product.getCoordinates().getX());
                 stCoor.setFloat(3, product.getCoordinates().getY());
                 stCoor.executeUpdate();
-
-                stOrg.setLong(1, product.getManufacturer().getId());
-                stOrg.setString(2, product.getManufacturer().getName());
-                stOrg.setInt(3, product.getManufacturer().getAnnualTurnover());
-                stOrg.setInt(4, product.getManufacturer().getOrganizationType().ordinal());
-                stOrg.executeUpdate();
+                int id;
+                if (product.getManufacturer() != null) {
+                    stOrg.setLong(1, product.getManufacturer().getId());
+                    stOrg.setString(2, product.getManufacturer().getName());
+                    stOrg.setInt(3, product.getManufacturer().getAnnualTurnover());
+                    stOrg.setInt(4, product.getManufacturer().getOrganizationType().ordinal());
+                    stOrg.executeUpdate();
+                }
 
                 stProd.setLong(1, product.getId());
                 stProd.setString(2, product.getName());
@@ -68,7 +50,10 @@ public class ProductCollectionInDbManager extends DbCollectionBase implements Db
                 stProd.setFloat(5, product.getPrice());
                 stProd.setDouble(6, product.getManufactureCost());
                 stProd.setInt(7, product.getUnitOfMeasure().ordinal());
-                stProd.setInt(8, product.getManufacturer().getId().intValue());
+                if (product.getManufacturer() == null)
+                    stProd.setNull(8, java.sql.Types.INTEGER);
+                else
+                    stProd.setInt(8, product.getManufacturer().getId().intValue());
                 stProd.setInt(9, product.getUser().getId());
                 stProd.executeUpdate();
             } catch (Exception e) {
@@ -93,17 +78,25 @@ public class ProductCollectionInDbManager extends DbCollectionBase implements Db
                 stCoor.setInt(3, product.getCoordinates().getId());
                 stCoor.executeUpdate();
 
-                stOrg.setString(1, product.getManufacturer().getName());
-                stOrg.setInt(2, product.getManufacturer().getAnnualTurnover());
-                stOrg.setInt(3, product.getManufacturer().getOrganizationType().ordinal());
-                stOrg.setLong(4, product.getManufacturer().getId());
-                stOrg.executeUpdate();
+                if (product.getManufacturer() != null) {
+                    stOrg.setString(1, product.getManufacturer().getName());
+                    stOrg.setInt(2, product.getManufacturer().getAnnualTurnover());
+                    stOrg.setInt(3, product.getManufacturer().getOrganizationType().ordinal());
+                    stOrg.setLong(4, product.getManufacturer().getId());
+                    stOrg.executeUpdate();
+                }
 
                 stProd.setString(1, product.getName());
-                stProd.setDouble(2, product.getManufactureCost());
-                stProd.setInt(3, product.getUnitOfMeasure().ordinal());
-                stProd.setLong(4, product.getId());
+                stProd.setFloat(2, product.getPrice());
+                stProd.setDouble(3, product.getManufactureCost());
+                stProd.setInt(4, product.getUnitOfMeasure().ordinal());
                 stProd.setInt(5, product.getUser().getId());
+                if (product.getManufacturer() == null)
+                    stProd.setNull(6, Types.INTEGER);
+                else
+                    stProd.setInt(6, product.getManufacturer().getId().intValue());
+                stProd.setLong(7, product.getId());
+
                 stProd.executeUpdate();
                 return true;
             } catch (Exception e) {
@@ -128,6 +121,8 @@ public class ProductCollectionInDbManager extends DbCollectionBase implements Db
                 stCoor.setInt(1, product.getCoordinates().getId());
                 stCoor.executeUpdate();
 
+                if (product.getManufacturer() == null)
+                    return true;
                 stOrg.setLong(1, product.getManufacturer().getId());
                 stOrg.executeUpdate();
 
@@ -135,8 +130,7 @@ public class ProductCollectionInDbManager extends DbCollectionBase implements Db
             } catch (Exception e) {
                 logger.error(e.getMessage());
             }
-        }
-        catch (SQLException e){
+        } catch (SQLException e) {
             logger.error(e.getMessage());
         }
         return false;
@@ -144,7 +138,7 @@ public class ProductCollectionInDbManager extends DbCollectionBase implements Db
 
     @Override
     public List<Product> load() {
-        try{
+        try {
             var connection = ConnectionContainer.getConnection();
             var selectSt = "select * from ";
             var result = new LinkedList<Product>();
@@ -222,8 +216,7 @@ public class ProductCollectionInDbManager extends DbCollectionBase implements Db
             } catch (NumberFormatException e) {
                 logger.error(e.getMessage());
             }
-        }
-        catch (SQLException e){
+        } catch (SQLException e) {
             logger.error(e.getMessage());
         }
         return null;
@@ -231,7 +224,8 @@ public class ProductCollectionInDbManager extends DbCollectionBase implements Db
 
     private final String updateCoordinates = "update Coordinates set x = ?, y = ? where id = ?";
     private final String updateOrganization = "update Organizations set name = ?, annualTurnover = ?, organizationType = ? where id = ?";
-    private final String updateProduct = "update Products set name = ?, price = ?, manufactureCost = ?, unitOfMeasure = ?, userId = ? where id = ?";
+    private final String updateProduct = "update Products set name = ?, price = ?, manufactureCost = ?, unitOfMeasure = ?, userId = ?, organization = ? where id = ?";
+
     private final String deleteProduct = "delete from Products where id = ?";
     private final String deleteOrganization = "delete from Organizations where id = ?";
     private final String deleteCoordinates = "delete from Coordinates where id = ?";

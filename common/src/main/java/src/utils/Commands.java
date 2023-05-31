@@ -23,4 +23,6 @@ public interface Commands {
   String UNDO_COMMANDS = "undo_commands";
   String SIGNAUP = "signup";
   String LOGIN = "login";
+  String SHOW_USERS = "show_users";
+  String ASSIGN_ROLE = "assign_role";
 }

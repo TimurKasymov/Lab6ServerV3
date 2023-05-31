@@ -1,11 +1,13 @@
 package src.network_utils;
 
+import src.container.SettingsContainer;
 import src.converters.SerializationManager;
 import src.interfaces.CommandManagerCustom;
 import src.loggerUtils.LoggerManager;
 import src.network.Request;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.net.InetSocketAddress;
 import java.nio.channels.*;
 import java.util.*;
@@ -57,11 +59,12 @@ public class TCPServer {
             se.close();
         }
     }
+
     public void start() {
         try {
             this.selector = Selector.open();
             ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
-            var socketAddress = new InetSocketAddress("localhost", port);
+            var socketAddress = new InetSocketAddress(SettingsContainer.getSettings().host, port);
             serverSocketChannel.bind(socketAddress, port);
             serverSocketChannel.configureBlocking(false);
             serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
@@ -92,16 +95,16 @@ public class TCPServer {
         Request request;
         // object is done being transferred
         var res = result.data;
-        int p = 1023;
+        int bytePointer = 1023;
         if (res == null)
             return;
         for (int i = res.length - 1; i > -1; i--) {
             if (res[i] != 0) {
-                p = i;
+                bytePointer = i;
                 break;
             }
         }
-        var cutres = Arrays.copyOfRange(res, 0, p+1);
+        var cutres = Arrays.copyOfRange(res, 0, bytePointer+1);
         var  obj =  serializationManager.deserialize(cutres);
         if ((Request)obj != null) {
             request = (Request)obj;

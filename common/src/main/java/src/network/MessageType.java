@@ -24,7 +24,12 @@ public enum MessageType {
     UNDO_COMMANDS(Commands.UNDO_COMMANDS),
     SIGNUP(Commands.SIGNAUP),
     LOGIN(Commands.LOGIN),
-    COMMAND_RESULT(null);
+    COMMAND_RESULT(null),
+    SHOW_USERS(Commands.SHOW_USERS),
+    ASSIGN_ROLE(Commands.ASSIGN_ROLE),
+    LOGGED("logged"),
+    LOGGING_FAILED("logging_failed");
+
     private String command;
 
     private MessageType(String command) {

@@ -1,6 +1,7 @@
 package src.network_utils;
 
 import com.google.common.primitives.Bytes;
+import src.container.SettingsContainer;
 import src.loggerUtils.LoggerManager;
 
 import java.io.IOException;
@@ -11,7 +12,7 @@ import java.util.Objects;
 
 public class SendingManager {
 
-    private final int PACKET_SIZE = 1024;
+    private final int PACKET_SIZE = SettingsContainer.getSettings().packageSize;
     private final int DATA_SIZE = PACKET_SIZE - 1;
 
 

@@ -8,5 +8,6 @@ public enum Argument {
     UNIT_OF_MEASURE,
     ID,
     NUMBER,
-    SCRIPT_FILE
+    SCRIPT_FILE,
+    ROLE
 }

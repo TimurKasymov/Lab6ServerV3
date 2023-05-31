@@ -1,8 +1,11 @@
 package src.interfaces;
 
+import src.Repositories.DI.ProductRepo;
+import src.Repositories.DI.UserRepo;
 import src.converters.SerializationManager;
 import src.db.DI.DbCollectionManager;
 import src.models.Product;
+import src.models.Role;
 import src.models.User;
 import src.network.Request;
 import src.network_utils.SendingManager;
@@ -17,13 +20,13 @@ import java.util.concurrent.ExecutorService;
 public interface CommandManagerCustom {
     /** executes given command */
     void executeCommand(Request userInput);
-    List<Product> getProducts();
+    ProductRepo getProductsRepo();
     /** executes given command */
     void executeCommand(String userInput);
     /** gets the history of executed src.commands */
     List<String> getCommandHistory();
     /** gets the info about each command */
-    List<String> getCommandsInfo();
+    List<String> getCommandsInfo(Role role);
     Scanner getScanner();
     SendingManager getSendingManager();
     SerializationManager getSerializationManager();
@@ -34,8 +37,7 @@ public interface CommandManagerCustom {
     ExecutorService getExecutorService();
     InputService getInputService();
     LocalDateTime getInitializationTime();
-    List<User> getUsers();
+    UserRepo getUsersRepo();
     DbCollectionManager<Product> getDbProductManager();
     DbCollectionManager<User> getDbUserManager();
-
 }

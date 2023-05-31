@@ -14,19 +14,22 @@ import java.util.List;
 
 public class PrintUniqueUnitOfMeasureCommand extends CommandBase implements Command {
     public PrintUniqueUnitOfMeasureCommand(CommandManagerCustom commandManager){
-        super(commandManager);
+        super(commandManager, List.of());
         arguments = new LinkedList<>();
     }
 
     @Override
     public boolean execute(String[] args) {
-        return execute(new Request(MessageType.PRINT_UNIQUE_UNIT_OF_MEASURE));
+        var request = new Request(MessageType.PRINT_UNIQUE_UNIT_OF_MEASURE);
+        request.userName = args[0];
+        request.userPassword = args[1];
+        return execute(request);
     }
 
     @Override
     public synchronized boolean execute(Request request) {
         var response = new Response();
-        var products = commandManager.getProducts();
+        var products = commandManager.getProductsRepo().getProducts();
         var set = new HashSet<UnitOfMeasure>();
         var res = new StringBuilder();
         for(var prod : products){

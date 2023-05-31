@@ -13,7 +13,7 @@ import java.util.List;
 
 public class FilterGreaterThanPriceCommand extends CommandBase implements Command {
     public FilterGreaterThanPriceCommand(CommandManagerCustom commandManager) {
-        super(commandManager);
+        super(commandManager, List.of());
         arguments = new LinkedList<>();
         arguments.add(ImmutablePair.of(Argument.PRICE, 1));
     }
@@ -21,6 +21,8 @@ public class FilterGreaterThanPriceCommand extends CommandBase implements Comman
     public boolean execute(String[] args) {
         var cost = Float.parseFloat(args[0]);
         var request = new Request(MessageType.FILTER_GREATER_THAN_PRICE);
+        request.userName = args[1];
+        request.userPassword = args[2];
         request.requiredArguments.add(cost);
         return execute(request);
     }
@@ -29,7 +31,7 @@ public class FilterGreaterThanPriceCommand extends CommandBase implements Comman
     public boolean execute(Request request) {
         var price = (Float) request.requiredArguments.get(0);
         var response = new Response();
-        var products = commandManager.getProducts();
+        var products = commandManager.getProductsRepo().getProducts();
         try {
             var flag = false;
             for (var prod : products) {

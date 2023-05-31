@@ -1,25 +1,28 @@
 package src.commands;
 
-import org.apache.commons.lang3.tuple.Pair;
 import src.interfaces.Command;
 import src.interfaces.CommandManagerCustom;
 import src.network.MessageType;
 import src.network.Request;
 import src.network.Response;
-import src.utils.Argument;
+import src.models.Role;
+
 import java.util.LinkedList;
 import java.util.List;
 
 public class HistoryCommand extends CommandBase implements Command {
 
     public HistoryCommand(CommandManagerCustom commandManager){
-        super(commandManager);
+        super(commandManager, List.of(Role.MIN_USER));
         arguments = new LinkedList<>();
     }
 
     @Override
     public boolean execute(String[] args) {
-        return execute(new Request(MessageType.HISTORY));
+        var requestToSend = new Request(MessageType.HISTORY);
+        requestToSend.userName = args[0];
+        requestToSend.userPassword = args[1];
+        return execute(requestToSend);
     }
     @Override
     public boolean execute(Request request) {

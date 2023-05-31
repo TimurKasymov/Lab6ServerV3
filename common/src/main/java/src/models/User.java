@@ -1,11 +1,11 @@
 package src.models;
 
-import java.io.Serial;
 
 public class User {
-    private int id;
+    private final int id;
     private String password;
     private String name;
+    public Role role;
 
     public User(int id, String password, String name){
         this.id = id;
@@ -19,7 +19,18 @@ public class User {
     public String getPassword(){
         return password;
     }
+    public void setPassword(String psw){
+        password = psw;
+    }
     public String getName(){
         return name;
     }
+    public void setName(String name){
+        this.name = name;
+    }
+    @Override
+    public String toString(){
+        return "ID: " + id + "\nName: " + getName() + "\nRole: " + role.toString();
+    }
+
 }

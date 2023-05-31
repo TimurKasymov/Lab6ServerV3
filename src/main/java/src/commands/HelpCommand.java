@@ -15,21 +15,27 @@ import java.util.List;
 public class HelpCommand extends CommandBase implements Command {
 
     public HelpCommand(CommandManagerCustom commandManager){
-        super(commandManager);
+        super(commandManager, List.of());
         arguments = new LinkedList<>();
     }
 
 
     @Override
     public boolean execute(String[] request) {
-        return execute(new Request(MessageType.HELP));
+        var requestToSend = new Request(MessageType.HELP);
+        requestToSend.userName = request[0];
+        requestToSend.userPassword = request[1];
+        return execute(requestToSend);
     }
 
     @Override
     public synchronized boolean execute(Request request) {
         var response = new Response();
         StringBuilder sb = new StringBuilder();
-        for (var commInfo : commandManager.getCommandsInfo()
+        var foundUser = commandManager.getUsersRepo().getUser(request);
+        if (foundUser.isEmpty())
+            return false;
+        for (var commInfo : commandManager.getCommandsInfo(foundUser.get().role)
              ) {
             sb.append(commInfo).append('\n');
         }

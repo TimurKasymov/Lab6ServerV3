@@ -1,7 +1,0 @@
-{
-  "local_port": 23557,
-  "db_user": "postgres",
-  "db_psw": "kasymov2002",
-  "db_url": "jdbc:postgresql://localhost:5432/tests4"
-}
-

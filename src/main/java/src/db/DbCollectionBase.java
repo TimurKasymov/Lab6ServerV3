@@ -9,43 +9,10 @@ import java.sql.SQLException;
 public class DbCollectionBase {
 
     protected final Logger logger;
-    protected String tableNameToCheck;
     protected String toExecute;
 
-    public DbCollectionBase(String tableNameToCheck, String toExecute) {
-        this.toExecute = toExecute;
-        this.tableNameToCheck = tableNameToCheck;
+    public DbCollectionBase() {
         this.logger = LoggerManager.getLogger(ProductCollectionInDbManager.class);
-    }
-
-    public void ensureTablesExists() {
-        try {
-            boolean ownTableCreated = false;
-            boolean requiredTableCreated = false;
-            var md = ConnectionContainer.getConnection().getMetaData();
-            var tables = md.getTables("Tables", "public", null, null);
-            while (tables.next()) {
-                var tableName = tables.getString(3);
-                if (tableName.equals(tableNameToCheck.toLowerCase()))
-                    requiredTableCreated = true;
-                if (tableName.equals(tableHistoryName.toLowerCase()))
-                    ownTableCreated = true;
-            }
-            if (!ownTableCreated) {
-                execute(ownCreatingQuery);
-                var queryToReserveFirstIdForReversedORNotInfo = "insert into " + tableHistoryName + " values(1, ?)";
-                try (var st = ConnectionContainer.getConnection().prepareStatement(queryToReserveFirstIdForReversedORNotInfo)) {
-                    st.setInt(1, CollectionState.NORMAL.ordinal());
-                    st.executeUpdate();
-                } catch (Exception e) {
-                    logger.error(e.getMessage());
-                }
-            }
-            if (!requiredTableCreated)
-                execute(toExecute);
-        } catch (SQLException sqlException) {
-            logger.error(sqlException.getMessage());
-        }
     }
 
     private void execute(String query) {
@@ -71,8 +38,8 @@ public class DbCollectionBase {
     }
 
     public void markReversedCollection() {
-        var query = "select from " + tableHistoryName + " where id = 1";
-        var updateQuery = "update " + tableHistoryName + "set data = ? where id = 1";
+        var query = "select * from " + tableHistoryName + " where id = 1";
+        var updateQuery = "update " + tableHistoryName + " set data = ? where id = 1";
         try (var st = ConnectionContainer.getConnection().createStatement()) {
             try (var resSet = st.executeQuery(query)) {
                 resSet.next();
@@ -89,6 +56,17 @@ public class DbCollectionBase {
 
     }
 
+    public Integer getNextId(String seqName){
+        try (var st = ConnectionContainer.getConnection().createStatement()) {
+            try (var res = st.executeQuery(seqName)) {
+                res.next();
+                return res.getInt(1);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public void markThatThisServerHasMadeChangesToDb() {
         try {
             var query = "insert into internalDataHistory(data) values(?)";
@@ -102,8 +80,4 @@ public class DbCollectionBase {
     }
 
     protected String tableHistoryName = "internalDataHistory";
-    public String ownCreatingQuery = "create table internalDataHistory(\n" +
-            "\tid serial primary key,\n" +
-            "\tdata int not null\n" +
-            ")";
 }

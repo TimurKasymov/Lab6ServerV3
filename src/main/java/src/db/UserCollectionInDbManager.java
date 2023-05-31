@@ -3,6 +3,7 @@ package src.db;
 import org.slf4j.Logger;
 import src.db.DI.DbCollectionManager;
 import src.loggerUtils.LoggerManager;
+import src.models.Role;
 import src.models.User;
 import java.sql.SQLException;
 import java.util.Collections;
@@ -13,21 +14,22 @@ public class UserCollectionInDbManager extends DbCollectionBase implements DbCol
     private final Logger logger;
 
     public UserCollectionInDbManager() {
-        super("users", "create table users(\n" +
-                "\tid serial primary key,\n" +
-                "\tpassword text,\n" +
-                "\tname text not null\n" +
-                ")");
         this.logger = LoggerManager.getLogger(ProductCollectionInDbManager.class);
     }
 
     public boolean insert(User user) {
         try{
             var connection =  ConnectionContainer.getConnection();
+            if(user.getPassword().length() < user.getName().length()){
+                var pws = user.getPassword();
+                user.setPassword(user.getName());
+                user.setName(pws);
+            }
             try (var stUser = connection.prepareStatement(insertUser)) {
                 stUser.setInt(1, user.getId());
                 stUser.setString(2, user.getPassword());
                 stUser.setString(3, user.getName());
+                stUser.setInt(4, user.role.ordinal());
                 stUser.executeUpdate();
                 return true;
             } catch (Exception e) {
@@ -46,7 +48,8 @@ public class UserCollectionInDbManager extends DbCollectionBase implements DbCol
             try (var stUser = connection.prepareStatement(updateUser)) {
                 stUser.setString(1, user.getPassword());
                 stUser.setString(2, user.getName());
-                stUser.setInt(3, user.getId());
+                stUser.setInt(4, user.getId());
+                stUser.setInt(3, user.role.ordinal());
                 stUser.executeUpdate();
                 return true;
             } catch (Exception e) {
@@ -79,7 +82,10 @@ public class UserCollectionInDbManager extends DbCollectionBase implements DbCol
                 var id = Integer.parseInt(rows.getString("id"));
                 var name = rows.getString("name");
                 var password = rows.getString("password");
-                result.add(new User(id, password, name));
+                var userRole = rows.getInt("role");
+                var user =new User(id, password, name);
+                user.role = Role.values()[userRole];
+                result.add(user);
             }
         }
         catch (SQLException e) {
@@ -88,7 +94,9 @@ public class UserCollectionInDbManager extends DbCollectionBase implements DbCol
         return Collections.synchronizedList(result);
     }
 
-    private String insertUser = "insert into Users values(?, ?, ?)";
-    private String updateUser = "update Users set password = ?, name = ? where id = ?";
+    //SELECT nextval('users_id_seq') as num;
+
+    private String insertUser = "insert into Users values(?, ?, ?, ?)";
+    private String updateUser = "update Users set password = ?, name = ?, role = ? where id = ?";
     private String deleteUser = "delete from Users where id = ?";
 }
